@@ -1180,7 +1180,15 @@ const FOODS = [
 {n:"サムギョプサル",c:"料理・おかず",kcal:290,p:13.0,f:24.0,cb:4.5,s:1.0,u:[["1人前",200]]},
 {n:"チゲ",c:"汁物・鍋",kcal:75,p:6.0,f:3.5,cb:4.5,s:1.4,u:[["1人前",400]]},
 {n:"サラダチキンのサラダ",c:"料理・おかず",kcal:70,p:11.0,f:1.5,cb:3.5,s:0.9,u:[["1人前",200]]},
-{n:"焼きおにぎり",c:"丼・麺・ご飯物",kcal:180,p:3.5,f:0.8,cb:39.0,s:1.1,u:[["1個",90]]}
+{n:"焼きおにぎり",c:"丼・麺・ご飯物",kcal:180,p:3.5,f:0.8,cb:39.0,s:1.1,u:[["1個",90]]},
+{n:"二郎系ラーメン(小)",c:"丼・麺・ご飯物",kcal:136,p:5.5,f:6.4,cb:13.6,s:0.7,u:[["1杯(小)",1100]]},
+{n:"二郎系ラーメン(小・ヤサイマシ)",c:"丼・麺・ご飯物",kcal:111,p:4.4,f:5.1,cb:11.3,s:0.6,u:[["1杯",1400]]},
+{n:"二郎系ラーメン(小・全マシ)",c:"丼・麺・ご飯物",kcal:118,p:4.6,f:5.9,cb:11.4,s:0.7,u:[["1杯",1500]]},
+{n:"家系ラーメン",c:"丼・麺・ご飯物",kcal:127,p:6.0,f:5.3,cb:13.3,s:0.9,u:[["1杯",750]]},
+{n:"家系ラーメン(ライス付き)",c:"丼・麺・ご飯物",kcal:132,p:5.4,f:4.5,cb:17.3,s:0.8,u:[["1食",900]]},
+{n:"背脂系ラーメン",c:"丼・麺・ご飯物",kcal:120,p:5.0,f:5.5,cb:12.5,s:0.9,u:[["1杯",700]]},
+{n:"油そば",c:"丼・麺・ご飯物",kcal:230,p:8.5,f:9.5,cb:27.5,s:1.2,u:[["1杯",350]]},
+{n:"まぜそば(台湾風)",c:"丼・麺・ご飯物",kcal:215,p:9.0,f:9.0,cb:24.5,s:1.3,u:[["1杯",400]]}
 ];
 const LIFTS = [
 {n:"ベンチプレス",m:"胸",e:"バーベル",met:5.0,k:"bench press ベンチプレス BP フラットベンチ"},
@@ -1647,7 +1655,8 @@ const SPORTS = [
 if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + LIFTS.length + " 運動" + SPORTS.length);
 
 /* ---------------------------------------------------------------- storage */
-const LSK = "kkc.recomp.v1";
+const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
+const APP_VER = "2026-08-24c";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -1660,7 +1669,7 @@ const DEF = () => ({
   set: {
     sex: PROFILE.sex, birth: PROFILE.birth, height: PROFILE.height,
     bmrF: "mifflin", bmrManual: 0, life: 1.15,
-    cadence: 112, stepSpeed: 1.25, tef: 1, setMin: 2.5,
+    cadence: 112, stepSpeed: 1.25, tef: 1, repSec: 3, restSec: 90,
     theme: "auto", setupDone: PROFILE.setup ? 0 : 1
   },
   goal: {
@@ -1714,9 +1723,15 @@ const parse = k => { const [y, m, d] = k.split("-").map(Number); return new Date
 const addD = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return key(d); };
 const diffD = (a, b) => Math.round((parse(b) - parse(a)) / 86400000);
 const TODAY = key(new Date());
-/* 目標日・開始日が空(公開版の初期状態)なら、開いた日を基準に埋める */
-if (!S.goal.startDate) S.goal.startDate = TODAY;
-if (!S.goal.date) S.goal.date = addD(TODAY, 60);
+/* 目標日・開始日が空(公開版の初期状態や全削除の直後)なら、開いた日を基準に埋める。
+   ここが空のまま目標画面を開くと日付計算が NaN になるため、状態を作り直す箇所では必ず通す。 */
+function normalizeGoal() {
+  if (!S.goal.startDate) S.goal.startDate = TODAY;
+  if (!S.goal.date) S.goal.date = addD(TODAY, 60);
+  if (!S.set.birth) S.set.birth = "1995-01-01";
+  if (!(S.set.height > 0)) S.set.height = 170;
+}
+normalizeGoal();
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 const dowOf = k => parse(k).getDay();
 /* 週は月曜始まり */
@@ -1749,7 +1764,7 @@ function toast(msg) {
 }
 
 /* ------------------------------------------------------------- day record */
-function blank() { return { w: null, bf: null, steps: 0, inc: [], meals: [], lifts: [], acts: [], td: null, note: "" }; }
+function blank() { return { w: null, bf: null, steps: 0, inc: [], meals: [], lifts: [], acts: [], td: null, trainMin: 0, note: "" }; }
 function day(k) {
   const d = S.days[k];
   if (!d) return blank();
@@ -1810,10 +1825,16 @@ function actSteps(a) {
 }
 function liftCalc(l, w) {
   const sets = l.sets || [];
-  const min = num(l.min) || sets.length * S.set.setMin;
+  const reps = sets.reduce((a, s) => a + num(s.rep), 0);
+  /* 所要時間はレップ数から見積もる。28レップのセットと8レップのセットでは
+     かかる時間がまるで違うので、セット数だけで一律に換算すると高レップが過小評価になる。 */
+  const min = num(l.min) || (reps * S.set.repSec + sets.length * S.set.restSec) / 60;
+  /* ダンベル・ケトルベルは片手の重量で入力するのが普通なので、
+     ボリュームは左右合計(×2)にする。ゴブレット等の片方だけ持つ種目は ph=0 にする。 */
+  const mult = l.ph ? 2 : 1;
   return {
-    min, kcal: kcalMet(l.met, w, min),
-    vol: sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0),
+    min, reps, mult, kcal: kcalMet(l.met, w, min),
+    vol: sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0) * mult,
     orm: sets.reduce((a, s) => Math.max(a, num(s.rep) ? num(s.kg) * (1 + num(s.rep) / 30) : 0), 0)
   };
 }
@@ -1826,8 +1847,12 @@ function calc(k) {
   const bmr = bmrOf(w, k), base = bmr * S.set.life;
   let incK = 0, incSteps = 0, incMin = 0, incDist = 0;
   for (const e of d.inc) { const r = incCalc(e, w); incK += r.kcal; incSteps += r.steps; incMin += num(e.min); incDist += r.dist; }
-  let liftK = 0, vol = 0, liftMin = 0;
-  for (const l of d.lifts) { const r = liftCalc(l, w); liftK += r.kcal; vol += r.vol; liftMin += r.min; }
+  let liftK = 0, vol = 0, liftMin = 0, liftReps = 0;
+  const lr = d.lifts.map(l => liftCalc(l, w));
+  const estMin = lr.reduce((a, r) => a + r.min, 0);
+  /* 実測時間を入れた場合は見積もりをその比率で補正する(いちばん正確) */
+  const tScale = num(d.trainMin) > 0 && estMin > 0 ? num(d.trainMin) / estMin : 1;
+  for (const r of lr) { liftK += r.kcal * tScale; vol += r.vol; liftMin += r.min * tScale; liftReps += r.reps; }
   let actK = 0, aSteps = 0, actMin = 0;
   for (const a of d.acts) { actK += kcalMet(num(a.met), w, num(a.min)); aSteps += actSteps(a); actMin += num(a.min); }
 
@@ -1843,7 +1868,7 @@ function calc(k) {
     w, bmr, base, kcal, p, f, cb, salt,
     stepK, incK, liftK, actK, tef, burn, net: kcal - burn,
     rawSteps: num(d.steps), dup, eff, stepMin, incSteps, aSteps,
-    vol, liftMin, actMin, incMin, incDist,
+    vol, liftMin, liftReps, actMin, incMin, incDist, trainMin: num(d.trainMin), estMin,
     isTrain: d.td == null ? d.lifts.length > 0 : !!d.td,
     logged: hasData(d)
   };
@@ -2174,10 +2199,23 @@ function vTrain() {
   <div class="card pop2"><div class="card-b">
     <div class="row wrap" style="gap:7px">
       <span class="chip s3"><b class="mono">${fmt(c.vol)}</b> kg 総ボリューム</span>
+      <span class="chip"><b class="mono">${c.liftReps}</b> レップ</span>
       <span class="chip"><b class="mono">${r0(c.liftMin)}</b> 分</span>
       <span class="chip s2"><b class="mono">${fmt(c.liftK)}</b> kcal</span>
       <span class="chip ${c.isTrain ? "s1" : ""}">${c.isTrain ? "トレ日" : "オフ日"}</span>
       <button class="btn sm gh" data-act="toggleTd">切替</button>
+    </div>
+    <div class="grid2" style="margin-top:11px">
+      <div class="fld"><label for="tmIn">実際のトレ時間 (分)</label>
+        <input id="tmIn" class="inp mono n" type="number" inputmode="numeric" step="5" min="0"
+          value="${d.trainMin || ""}" placeholder="見込み ${r0(c.estMin)}" data-in="trainMin"></div>
+      <div class="fld"><label>消費カロリー</label>
+        <div class="inp mono n ro">${fmt(c.liftK)} kcal</div></div>
+    </div>
+    <div class="note" style="margin-top:10px">
+      消費は<b>METs × 時間 × 体重</b>で出しています。所要時間はレップ数から見積もっていますが、
+      <b>実際にかかった時間を入れるといちばん正確</b>になります(その時間に合わせて全体を補正します)。
+      重量を変えても消費が変わらないのは、この式に重量が入らないためです。挙げた重量は<b>総ボリューム</b>のほうで効いてきます。
     </div>
   </div></div>
   ${liftCard(d, c)}
@@ -2338,7 +2376,7 @@ function liftCard(d, c) {
     const r = liftCalc(l, c.w);
     return `<div class="li">
           <div class="body"><div class="t1">${esc(l.n)}</div>
-            <div class="t2">${(l.sets || []).map(s => `${r1(s.kg)}×${r0(s.rep)}`).join("  ")} · ${(l.sets || []).length}セット${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
+            <div class="t2">${(l.sets || []).map(s => `${r1(s.kg)}×${r0(s.rep)}`).join("  ")} · ${(l.sets || []).length}セット${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
           <div class="r"><div class="a">${fmt(r.vol)}</div><div class="b">kg</div></div>
           <button class="x" data-act="editLift" data-i="${i}" aria-label="${esc(l.n)}を編集">${IC.pen}</button>
           <button class="x" data-act="delLift" data-i="${i}" aria-label="${esc(l.n)}を削除">${IC.x}</button>
@@ -2958,7 +2996,8 @@ function vSet() {
       <div class="grid2" style="margin-top:4px">
         <div class="fld"><label for="sC">歩行ケイデンス (歩/分)</label><input id="sC" class="inp mono n" type="number" step="1" value="${st.cadence}" data-s="cadence"></div>
         <div class="fld"><label for="sSp">普段の歩行速度 (m/s)</label><input id="sSp" class="inp mono n" type="number" step="0.05" value="${st.stepSpeed}" data-s="stepSpeed"></div>
-        <div class="fld"><label for="sSm">1セットの所要時間 (分)</label><input id="sSm" class="inp mono n" type="number" step="0.1" value="${st.setMin}" data-s="setMin"></div>
+        <div class="fld"><label for="sRp">1レップの秒数</label><input id="sRp" class="inp mono n" type="number" step="0.5" min="1" value="${st.repSec}" data-s="repSec"></div>
+        <div class="fld"><label for="sRs">セット間の休憩 (秒)</label><input id="sRs" class="inp mono n" type="number" step="10" min="0" value="${st.restSec}" data-s="restSec"></div>
         <div class="fld"><label for="sT">食事誘発性熱産生 (摂取の10%)</label>
           <select id="sT" class="inp" data-s="tef">
             <option value="1"${st.tef ? " selected" : ""}>消費に含める</option>
@@ -3022,6 +3061,10 @@ function vSet() {
         歩行・走行・傾斜 … ACSM代謝計算式 (歩行 VO₂=0.1S+1.8SG+3.5 / 走行 VO₂=0.2S+0.9SG+3.5、S=m/分)<br>
         体脂肪 … 1kg = 7,200 kcal で換算<br>
         傾斜ウォークは速度2.0 m/s以上で走行式に自動で切り替わります。
+      </div>
+      <div class="note" style="margin-top:11px">
+        バージョン <b class="mono">${APP_VER}</b> ／ 保存キー <span class="mono">${LSK}</span><br>
+        更新しても保存キーは変えないので、<b>記録は引き継がれます</b>。この番号が変わっていれば更新が反映されています。
       </div>
     </div>
   </div>`;
@@ -3156,17 +3199,32 @@ function sheetQuick(slot) {
 }
 
 /* ---------------------------------------------------------------- 種目シート */
-function lastSets(name) {
+function lastLift(name) {
   const ks = Object.keys(S.days).filter(k => k < CUR).sort().reverse();
-  for (const k of ks) { const l = (S.days[k].lifts || []).find(x => x.n === name); if (l && l.sets && l.sets.length) return l.sets.map(s => ({ kg: s.kg, rep: s.rep })); }
-  return [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
+  for (const k of ks) { const l = (S.days[k].lifts || []).find(x => x.n === name); if (l && l.sets && l.sets.length) return l; }
+  return null;
+}
+function lastSets(name) {
+  const l = lastLift(name);
+  return l ? l.sets.map(s => ({ kg: s.kg, rep: s.rep })) : [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
+}
+/* 片手入力の初期値: ダンベル・ケトルベルは既定で片手、前回の記録があればそれを優先 */
+function defaultPH(name) {
+  const prev = lastLift(name);
+  if (prev && prev.ph != null) return prev.ph ? 1 : 0;
+  const ex = LIFTS.find(x => x.n === name);
+  if (!ex) return 0;
+  if (ex.e !== "ダンベル" && ex.e !== "ケトルベル") return 0;
+  /* 片方だけ持つ / 両手で1個持つ種目は対象外 */
+  return /ワンハンド|コンセントレーション|ゴブレット|プルオーバー|サイドベンド|ターキッシュ|スーツケース|片手/.test(name) ? 0 : 1;
 }
 function sheetLift(editIdx) {
   const ex = editIdx != null ? day(CUR).lifts[editIdx] : null;
   openSheet({
     title: ex ? "トレーニングを編集" : "トレーニングを追加", q: "", editIdx,
-    sel: ex ? { n: ex.n, met: ex.met, m: "", e: "" } : null,
+    sel: ex ? Object.assign({ n: ex.n, met: ex.met, m: "", e: "" }, LIFTS.find(x => x.n === ex.n) || {}) : null,
     sets: ex ? ex.sets.map(s => ({ kg: s.kg, rep: s.rep })) : [],
+    ph: ex ? (ex.ph ? 1 : 0) : 0,
     cands() {
       const favs = S.fav.l.map(n => LIFTS.find(f => f.n === n)).filter(Boolean);
       const list = this.q ? search(LIFTS, this.q, liftKey, 80) : favs.concat(LIFTS.slice(0, 40));
@@ -3180,17 +3238,36 @@ function sheetLift(editIdx) {
         return `<div class="srch">${IC.srch}<input class="inp" data-q placeholder="種目名の一部(例: インクライン、スクワット、ロウ)" value="${esc(this.q)}"></div>
           <div class="cands">${this.cands()}</div>`;
       }
-      if (!this.sets.length) this.sets = lastSets(this.sel.n);
+      if (!this.sets.length) { this.sets = lastSets(this.sel.n); this.ph = defaultPH(this.sel.n); }
       const w = weightAt(CUR);
-      const vol = this.sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0);
+      const dumb = this.sel.e === "ダンベル" || this.sel.e === "ケトルベル";
+      const reps = this.sets.reduce((a, s) => a + num(s.rep), 0);
+      const estMin = (reps * S.set.repSec + this.sets.length * S.set.restSec) / 60;
+      const vol = this.sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0) * (this.ph ? 2 : 1);
       return `<div class="row" style="margin-bottom:10px">
           ${this.editIdx == null ? `<button class="btn sm gh" data-act="backLift">${IC.L}戻る</button>` : ""}
           <span class="sp" style="flex:1"></span>
           <button class="btn sm gh" data-act="favLift">${IC.star}${S.fav.l.includes(this.sel.n) ? "よく使うから外す" : "よく使うに追加"}</button>
         </div>
-        <div style="font-size:16px;font-weight:600;margin-bottom:11px">${esc(this.sel.n)}</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:${dumb ? "9" : "11"}px">${esc(this.sel.n)}</div>
+        ${dumb ? `<div class="fld" style="margin-bottom:11px"><label>入力する重量</label>
+          <div class="pills">
+            <button class="pill" data-act="ph" data-v="1" aria-pressed="${!!this.ph}">片手の重量</button>
+            <button class="pill" data-act="ph" data-v="0" aria-pressed="${!this.ph}">合計の重量</button>
+          </div>
+          <div class="sub" style="margin-top:5px">${this.ph ? "左右あるので、ボリュームは入力した重量の<b>2倍</b>で集計します" : "入力した重量をそのまま集計します(ゴブレット等、1個を両手で持つ種目)"}</div></div>` : ""}
+        <div class="fld" style="margin-bottom:12px"><label>まとめて入力 — 同じ重量で何セットか</label>
+          <div class="row" style="gap:6px">
+            <input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" data-bulk="kg" style="flex:1;min-width:0">
+            <span style="color:var(--muted);font-weight:700">×</span>
+            <input class="inp mono n" type="number" inputmode="numeric" step="1" min="1" placeholder="回" data-bulk="rep" style="flex:1;min-width:0">
+            <span style="color:var(--muted);font-weight:700">×</span>
+            <input class="inp mono n" type="number" inputmode="numeric" step="1" min="1" max="20" value="3" data-bulk="set" style="flex:1;min-width:0">
+            <span style="color:var(--muted);font-size:12px">セット</span>
+            <button class="btn sm pri" data-act="bulkAdd" style="flex:none">${IC.plus}</button>
+          </div></div>
         <div class="setrow" style="color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.06em">
-          <span></span><span>重量 (kg)</span><span>回数</span><span></span></div>
+          <span></span><span>重量 (kg)${dumb && this.ph ? "/片手" : ""}</span><span>回数</span><span></span></div>
         ${this.sets.map((s, i) => `<div class="setrow">
           <span class="idx">${i + 1}</span>
           <input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" value="${s.kg}" data-set="${i}" data-fld="kg"${i === 0 ? " data-first" : ""}>
@@ -3198,7 +3275,9 @@ function sheetLift(editIdx) {
           <button class="x" data-act="delSet" data-i="${i}" aria-label="${i + 1}セット目を削除">${IC.x}</button>
         </div>`).join("")}
         <button class="btn sm add blk" data-act="addSet" style="margin-top:4px">${IC.plus}セットを足す</button>
-        <div class="note" style="margin-top:11px">総ボリューム <b>${fmt(vol)} kg</b> · 推定消費 <b>${fmt(kcalMet(this.sel.met, w, this.sets.length * S.set.setMin))} kcal</b>(1セット${r1(S.set.setMin)}分換算)</div>`;
+        <div class="note" style="margin-top:11px">総ボリューム <b>${fmt(vol)} kg</b> · ${reps} レップ<br>
+          所要 <b>${r0(estMin)} 分</b> の見込み → 推定消費 <b>${fmt(kcalMet(this.sel.met, w, estMin))} kcal</b>
+          <span style="color:var(--muted)">(1レップ${r1(S.set.repSec)}秒 + 休憩${r0(S.set.restSec)}秒で計算)</span></div>`;
     },
     foot() {
       if (!this.sel) return "";
@@ -3397,6 +3476,7 @@ function mergeIn(inc) {
   if (inc.goal) S.goal = Object.assign(S.goal, inc.goal);
   if (Array.isArray(inc.my)) for (const f of inc.my) if (!S.my.some(x => x.n === f.n)) S.my.push(f);
   if (Array.isArray(inc.sets)) for (const s of inc.sets) if (!S.sets.some(x => x.n === s.n)) S.sets.push(s);
+  normalizeGoal();
   save();
   return n;
 }
@@ -3558,13 +3638,26 @@ document.addEventListener("click", ev => {
     case "pickLift": { const f = LIFTS.find(x => x.n === a.dataset.n); SH.sel = f; SH.sets = []; drawSheet(); return; }
     case "backLift": SH.sel = null; SH.sets = []; drawSheet(); return;
     case "favLift": { const n = SH.sel.n, x = S.fav.l.indexOf(n); x < 0 ? S.fav.l.unshift(n) : S.fav.l.splice(x, 1); save(); drawSheet(); return; }
+    case "ph": pullSets(); SH.ph = a.dataset.v === "1" ? 1 : 0; drawSheet(); return;
+    case "bulkAdd": {
+      pullSets();
+      const host = document.getElementById("sheetHost");
+      const bv = k => num(host.querySelector(`[data-bulk="${k}"]`).value);
+      const kg = bv("kg"), rep = bv("rep"), n = cl(r0(bv("set")), 1, 20);
+      if (rep <= 0) { toast("回数を入れてください"); return; }
+      /* 空の行しか無ければ置き換え、入力済みなら後ろに足す */
+      const empty = SH.sets.every(s => !num(s.kg) && !num(s.rep));
+      if (empty) SH.sets = [];
+      for (let i = 0; i < n; i++) SH.sets.push({ kg: kg || "", rep });
+      drawSheet(); return;
+    }
     case "addSet": pullSets(); SH.sets.push({ kg: SH.sets.length ? SH.sets[SH.sets.length - 1].kg : "", rep: "" }); drawSheet(); return;
     case "delSet": pullSets(); SH.sets.splice(i, 1); if (!SH.sets.length) SH.sets = [{ kg: "", rep: "" }]; drawSheet(); return;
     case "saveLift": {
       pullSets();
       const sets = SH.sets.filter(s => num(s.kg) > 0 || num(s.rep) > 0).map(s => ({ kg: num(s.kg), rep: num(s.rep) }));
       if (!sets.length) { toast("重量と回数を入れてください"); return; }
-      const rec = { n: SH.sel.n, met: SH.sel.met, sets };
+      const rec = { n: SH.sel.n, met: SH.sel.met, sets, ph: SH.ph ? 1 : 0 };
       edit(CUR, d => { if (SH.editIdx == null) d.lifts.push(rec); else d.lifts[SH.editIdx] = rec; if (d.td == null) d.td = 1; });
       closeSheet(); render(); toast(`${rec.n} を記録`); return;
     }
@@ -3656,7 +3749,7 @@ document.addEventListener("click", ev => {
     }
     case "wipe": {
       if (!confirm("すべての記録と設定を削除します。取り消せません。よろしいですか?")) return;
-      localStorage.removeItem(LSK); S = DEF(); save(); CUR = TODAY; render(); toast("削除しました"); return;
+      localStorage.removeItem(LSK); S = DEF(); normalizeGoal(); save(); CUR = TODAY; render(); if (!S.set.setupDone) sheetSetup(); toast("削除しました"); return;
     }
   }
 });
@@ -3674,6 +3767,7 @@ document.addEventListener("change", ev => {
   if (el.dataset.in) {
     const k = el.dataset.in;
     if (k === "steps") edit(CUR, d => { d.steps = Math.max(0, r0(num(el.value))); });
+    else if (k === "trainMin") edit(CUR, d => { d.trainMin = Math.max(0, r0(num(el.value))); });
     else if (k === "w") edit(CUR, d => { d.w = el.value === "" ? null : num(el.value); });
     else if (k === "bf") edit(CUR, d => { d.bf = el.value === "" ? null : num(el.value); });
     else if (k === "note") edit(CUR, d => { d.note = el.value; });
