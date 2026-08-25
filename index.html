@@ -210,9 +210,9 @@ main{flex:1;padding:15px 15px calc(84px + env(safe-area-inset-bottom,0px));max-w
 .navbtn svg{width:20px;height:20px}
 
 /* week strip */
-.wkstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:13px}
+.wkstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:13px}
 .wkcell{
-  border:1.5px solid var(--hair);background:var(--surf);border-radius:var(--r2);
+  min-width:0;overflow:hidden;border:1.5px solid var(--hair);background:var(--surf);border-radius:var(--r2);
   padding:7px 3px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;
   box-shadow:var(--sh1);transition:transform .12s var(--ease),border-color .14s;
 }
@@ -264,9 +264,9 @@ main{flex:1;padding:15px 15px calc(84px + env(safe-area-inset-bottom,0px));max-w
 .track .goal{position:absolute;top:-3px;bottom:-3px;width:2.5px;background:var(--ink);opacity:.4;border-radius:2px}
 
 /* ---------- 入力タイル ---------- */
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:11px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:11px}
 .tile{
-  background:var(--surf);border:1.5px solid var(--hair);border-radius:var(--r);
+  min-width:0;background:var(--surf);border:1.5px solid var(--hair);border-radius:var(--r);
   box-shadow:var(--sh2);padding:14px 9px 12px;
   display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;
   transition:transform .14s var(--ease),border-color .16s,box-shadow .16s;
@@ -282,7 +282,7 @@ main{flex:1;padding:15px 15px calc(84px + env(safe-area-inset-bottom,0px));max-w
 .tile .vl{font-size:11.5px;font-family:var(--fm);color:var(--muted);font-weight:500;line-height:1.3}
 .tile .vl b{color:var(--ink);font-weight:600}
 
-.minirow{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.minirow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
 .mini{
   background:var(--surf2);border:1px solid var(--hair);border-radius:var(--r2);
   padding:9px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;
@@ -352,8 +352,8 @@ main{flex:1;padding:15px 15px calc(84px + env(safe-area-inset-bottom,0px));max-w
 .inp.n{text-align:right}
 .inp.ro{background:var(--surf3);border-style:dashed;color:var(--ink2)}
 select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49%,var(--muted) 50%),linear-gradient(-45deg,transparent 49%,var(--muted) 50%);background-position:calc(100% - 16px) 53%,calc(100% - 11px) 53%;background-size:6px 6px;background-repeat:no-repeat;padding-right:32px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .row{display:flex;align-items:center;gap:10px}
 .row.wrap{flex-wrap:wrap}
 .empty{text-align:center;padding:18px 10px;color:var(--muted);font-size:12.5px}
@@ -372,11 +372,38 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .li .x.e:hover{background:var(--s2-soft);color:var(--s2)}
 .li .x svg{width:15px;height:15px}
 
-.slot-h{display:flex;align-items:center;gap:8px;margin-top:14px;margin-bottom:3px;
-  font-size:11.5px;font-weight:700;letter-spacing:.07em;color:var(--muted)}
-.slot-h:first-child{margin-top:0}
-.slot-h .ln{flex:1;height:1.5px;background:var(--hair);border-radius:1px}
-.slot-h .kc{font-family:var(--fm);letter-spacing:0;color:var(--ink2);font-weight:600}
+/* 区切り見出し。線を「文字の横」ではなく「見出しの上」に置いて、
+   セクションの始まりが一目で分かるようにする。 */
+.slot-h{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  margin:20px 0 8px;padding-top:15px;border-top:1.5px solid var(--hair);
+  font-size:13.5px;font-weight:700;letter-spacing:.01em;color:var(--ink2);
+}
+.slot-h:first-child{margin-top:2px;padding-top:0;border-top:none}
+.slot-h .ln{flex:1;min-width:0}
+/* 2つのボタンは1組として扱う。幅が足りないとき片方だけ落ちるのを防ぐ。 */
+.slot-h .acts{display:flex;gap:8px;margin-left:auto;flex:none}
+.slot-h .kc{font-family:var(--fm);letter-spacing:0;color:var(--ink2);font-weight:600;font-size:12.5px}
+
+/* 食事の区分だけは、さらに強く。色付きのバーと大きめの文字で段を作る。 */
+.slot-h.mt{
+  font-size:16px;color:var(--ink);gap:10px;
+  margin:26px 0 10px;padding-top:17px;border-top-width:2px;
+}
+.slot-h.mt:first-child{margin-top:0}
+.slot-h.mt::before{
+  content:"";width:5px;height:19px;border-radius:3px;background:var(--s1);flex:none;
+}
+.slot-h.mt .kc{
+  font-size:13px;color:var(--ink);background:var(--s1-soft);
+  padding:3px 10px;border-radius:999px;
+}
+.slot-h.mt .kc.zero{background:transparent;color:var(--muted);padding-left:0;padding-right:0}
+.slot-body{padding-left:15px;border-left:2px solid var(--hair);margin-left:1px}
+.slot-body .li:first-child{border-top:none}
+.slot-empty{
+  padding:9px 0 3px;color:var(--muted);font-size:12.5px;
+}
 
 /* ---------- sheet ---------- */
 .scrim{position:fixed;inset:0;z-index:100;background:rgba(10,22,20,.46);
@@ -414,9 +441,9 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 /* ---------- calendar ---------- */
 .calhead{display:flex;align-items:center;gap:8px;margin-bottom:13px}
 .calhead .t{flex:1;text-align:center;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
-.caldow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.caldow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px}
 .caldow div{text-align:center;font-size:10.5px;color:var(--muted);font-weight:700}
-.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .calcell{min-height:52px;aspect-ratio:1/1.1;border:1.5px solid var(--hair);background:var(--surf);border-radius:var(--r2);
   padding:6px 5px 5px;display:flex;flex-direction:column;gap:3px;position:relative;text-align:left;
   transition:transform .12s var(--ease),border-color .14s}
@@ -424,7 +451,7 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .calcell:active{transform:scale(.94)}
 .calcell.void{background:transparent;border-color:transparent;pointer-events:none;box-shadow:none}
 .calcell .n{font-size:13px;font-weight:700;font-family:var(--fm);line-height:1}
-.calcell .kc{font-size:9.5px;color:var(--muted);font-family:var(--fm);line-height:1.15;margin-top:auto;font-weight:600}
+.calcell .kc{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:var(--muted);font-family:var(--fm);line-height:1.15;margin-top:auto;font-weight:600}
 .calcell .bars{display:flex;gap:2.5px;height:16px;align-items:flex-end;margin-top:auto}
 .calcell .bars i{flex:1;border-radius:2px 2px 0 0;min-height:1.5px}
 .calcell[aria-current="date"]{border-color:var(--s2);background:var(--s2-soft)}
@@ -432,8 +459,8 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .calcell .dot{position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%}
 .calcell.future{opacity:.45}
 
-.mstat{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-@media(min-width:560px){.mstat{grid-template-columns:repeat(4,1fr)}}
+.mstat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:560px){.mstat{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .mstat .b{background:var(--surf2);border-radius:var(--r2);padding:10px 12px}
 .mstat .b .k{font-size:11px;color:var(--muted);font-weight:700}
 .mstat .b .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
@@ -1656,7 +1683,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-24c";
+const APP_VER = "2026-08-24d";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2244,18 +2271,21 @@ function vMove() {
 }
 
 function macRow(name, v, tgt, col, unit) {
-  const pct = tgt ? cl((v / tgt) * 100, 0, 100) : 0;
-  const over = tgt && v > tgt;
-  const ow = tgt ? cl(((v - tgt) / tgt) * 100, 0, 100) : 0;
+  const over = tgt > 0 && v > tgt;
+  /* 超過ぶんはバーの内側に縞で重ねる。以前は目盛りの外側に描いていて
+     枠の overflow:hidden に隠れ、超過が一切見えなかった。 */
+  const ex = over ? cl(((v - tgt) / v) * 100, 0, 100) : 0;
+  const pct = tgt > 0 ? cl((v / tgt) * 100, 0, 100) : 0;
+  const goalPos = over ? 100 - ex : 100;   /* 目標位置の印 */
   return `<div class="macrow">
     <div class="top"><span class="nm">${SW(col)}${name}</span><span class="sp"></span>
       <span class="amt"><b>${r0(v)}</b><span> / ${r0(tgt)}${unit}</span></span></div>
     <div class="track">
       <i style="width:${pct}%;background:${col}"></i>
-      ${over ? `<span class="over" style="left:${pct}%;width:${ow}%"></span>` : ""}
-      <span class="goal" style="left:calc(100% - 1px)"></span>
+      ${over ? `<span class="over" style="left:${goalPos}%;width:${ex}%"></span>` : ""}
+      <span class="goal" style="left:calc(${goalPos}% - 1px)"></span>
     </div>
-    <div class="rest">${over ? `${r0(v - tgt)}${unit} 超過` : `残り ${r0(tgt - v)}${unit}`}</div>
+    <div class="rest">${over ? `<b style="color:var(--crit)">${r0(v - tgt)}${unit} 超過</b>` : `残り ${r0(tgt - v)}${unit}`}</div>
   </div>`;
 }
 /* 週次カロリー精算カード */
@@ -2318,15 +2348,19 @@ function mealCard(d, c) {
       ${SLOTS.map(([sk, sn]) => {
     const items = d.meals.map((m, i) => [m, i]).filter(([m]) => (m.slot || "s") === sk);
     const sub = items.reduce((a, [m]) => a + num(m.kcal), 0);
-    return `<div class="slot-h">${sn}<span class="ln"></span><span class="kc">${sub ? fmt(sub) + " kcal" : ""}</span>
-        <button class="btn sm add" data-act="addFood" data-slot="${sk}">${IC.plus}検索</button>
-        <button class="btn sm add" data-act="quickFood" data-slot="${sk}">${IC.plus}kcal</button></div>
-      ${items.length ? items.map(([m, i]) => `<div class="li">
+    return `<div class="slot-h mt">${sn}
+        <span class="kc${sub ? "" : " zero"}">${sub ? fmt(sub) + " kcal" : "未入力"}</span>
+        <span class="ln"></span>
+        <span class="acts">
+          <button class="btn sm add" data-act="addFood" data-slot="${sk}">${IC.plus}検索</button>
+          <button class="btn sm add" data-act="quickFood" data-slot="${sk}">${IC.plus}kcal</button>
+        </span></div>
+      ${items.length ? `<div class="slot-body">${items.map(([m, i]) => `<div class="li">
           <div class="body"><div class="t1">${esc(m.n)}</div>
             <div class="t2">${esc(m.q || r0(m.g) + "g")} · P${r1(m.p)} F${r1(m.f)} C${r1(m.cb)}</div></div>
           <div class="r"><div class="a">${fmt(m.kcal)}</div><div class="b">kcal</div></div>
           <button class="x" data-act="delMeal" data-i="${i}" aria-label="${esc(m.n)}を削除">${IC.x}</button>
-        </div>`).join("") : ""}`;
+        </div>`).join("")}</div>` : ""}`;
   }).join("")}
       <div class="row wrap" style="margin-top:12px;gap:8px">
         <button class="btn sm gh" data-act="mySets">マイセット</button>
