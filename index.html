@@ -448,6 +448,7 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .pill:active{transform:scale(.94)}
 .pill[aria-pressed="true"]{background:var(--s2);border-color:var(--s2);color:#fff}
 .setrow{display:grid;grid-template-columns:28px 1fr 1fr 36px;gap:8px;align-items:center;margin-bottom:7px}
+.setrow.bw{grid-template-columns:28px 1fr 36px}
 .setrow .idx{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center;font-weight:600}
 
 /* ---------- calendar ---------- */
@@ -1908,7 +1909,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-26g";
+const APP_VER = "2026-08-26h";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2097,6 +2098,35 @@ function restFactor(met) {
   if (met >= 4.5) return 1.35;  /* 通常の多関節(ベンチ/ロウ/プレス) */
   return 0.7;                   /* 単関節(カール/レイズ/エクステンション) */
 }
+/* 自重種目で腕や脚にかかる負荷は体重の一定割合になる。
+   プッシュアップなら約65%、懸垂やディップスならほぼ100%。
+   ここを掛けてボリュームに換算する(0 は換算対象外＝静的種目)。 */
+const BW_FRAC = [
+  [/懸垂|チンニング|マッスルアップ|ディップス/, 1.00],
+  [/ハンドスタンドプッシュアップ/, 0.90],
+  [/デクラインプッシュアップ|プライオプッシュアップ/, 0.75],
+  [/膝つきプッシュアップ/, 0.50],
+  [/インクラインプッシュアップ/, 0.45],
+  [/パイクプッシュアップ/, 0.70],
+  [/プッシュアップ/, 0.65],
+  [/インバーテッドロウ|TRXロウ|TRXプッシュアップ/, 0.60],
+  [/ノルディック|GHD/, 0.85],
+  [/スクワット|ランジ|ステップアップ/, 0.85],
+  [/レッグレイズ|ニーレイズ|トーズトゥバー|ドラゴンフラッグ/, 0.32],
+  [/クランチ|シットアップ|V字|バイシクル|ロシアンツイスト/, 0.45],
+  [/バックエクステンション|ハイパーエクステンション|グルートブリッジ|ヒップリフト/, 0.50],
+  [/バーピー|マウンテンクライマー|ボックスジャンプ|ブロードジャンプ|ロープクライム/, 0.65]
+];
+function bwFrac(name) {
+  for (const [re, v] of BW_FRAC) if (re.test(name)) return v;
+  return 0;   /* プランク等の静的種目はボリューム換算しない */
+}
+/* その種目が「自重/荷重」の切替を出すべきか */
+function isBW(name) {
+  const ex = LIFTS.find(x => x.n === name);
+  return !!(ex && ex.e === "自重" && bwFrac(name) > 0);
+}
+
 function liftCalc(l, w) {
   const sets = l.sets || [];
   const reps = sets.reduce((a, s) => a + num(s.rep), 0);
@@ -2107,10 +2137,14 @@ function liftCalc(l, w) {
   /* ダンベル・ケトルベルは片手の重量で入力するのが普通なので、
      ボリュームは左右合計(×2)にする。ゴブレット等の片方だけ持つ種目は ph=0 にする。 */
   const mult = l.ph ? 2 : 1;
+  /* 自重種目は「体重×係数」を1レップの負荷に足す。kg欄は加重ぶんだけ。 */
+  const frac = l.bw ? bwFrac(l.n) : 0;
+  const bwLoad = frac * w;
+  const load = s => (bwLoad + num(s.kg)) * mult;
   return {
-    min, reps, mult, rest, kcal: kcalMet(l.met, w, min),
-    vol: sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0) * mult,
-    orm: sets.reduce((a, s) => Math.max(a, num(s.rep) ? num(s.kg) * (1 + num(s.rep) / 30) : 0), 0)
+    min, reps, mult, rest, frac, bwLoad, kcal: kcalMet(l.met, w, min),
+    vol: sets.reduce((a, s) => a + load(s) * num(s.rep), 0),
+    orm: sets.reduce((a, s) => Math.max(a, num(s.rep) ? load(s) * (1 + num(s.rep) / 30) : 0), 0)
   };
 }
 
@@ -2721,7 +2755,7 @@ function liftCard(d, c) {
     const r = liftCalc(l, c.w);
     return `<div class="li">
           <div class="body"><div class="t1">${esc(l.n)}</div>
-            <div class="t2">${(l.sets || []).map(s => `${r1(s.kg)}×${r0(s.rep)}`).join("  ")} · ${(l.sets || []).length}セット${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
+            <div class="t2">${(l.sets || []).map(s => l.bw ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`) : `${r1(s.kg)}×${r0(s.rep)}`).join("  ")} · ${(l.sets || []).length}セット${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
           <div class="r"><div class="a">${fmt(r.vol)}</div><div class="b">kg</div></div>
           <button class="x" data-act="editLift" data-i="${i}" aria-label="${esc(l.n)}を編集">${IC.pen}</button>
           <button class="x" data-act="delLift" data-i="${i}" aria-label="${esc(l.n)}を削除">${IC.x}</button>
@@ -3581,6 +3615,11 @@ function lastSets(name) {
   return l ? l.sets.map(s => ({ kg: s.kg, rep: s.rep })) : [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
 }
 /* 片手入力の初期値: ダンベル・ケトルベルは既定で片手、前回の記録があればそれを優先 */
+function defaultBW(name) {
+  const prev = lastLift(name);
+  if (prev && prev.bw != null) return prev.bw ? 1 : 0;
+  return isBW(name) ? 1 : 0;   /* 自重種目は既定で「自重」 */
+}
 function defaultPH(name) {
   const prev = lastLift(name);
   if (prev && prev.ph != null) return prev.ph ? 1 : 0;
@@ -3597,6 +3636,7 @@ function sheetLift(editIdx) {
     sel: ex ? Object.assign({ n: ex.n, met: ex.met, m: "", e: "" }, LIFTS.find(x => x.n === ex.n) || {}) : null,
     sets: ex ? ex.sets.map(s => ({ kg: s.kg, rep: s.rep })) : [],
     ph: ex ? (ex.ph ? 1 : 0) : 0,
+    bw: ex ? (ex.bw ? 1 : 0) : 0,
     cands() {
       const favs = S.fav.l.map(n => LIFTS.find(f => f.n === n)).filter(Boolean);
       const list = this.q ? search(LIFTS, this.q, liftKey, 80) : favs.concat(LIFTS.slice(0, 40));
@@ -3610,41 +3650,53 @@ function sheetLift(editIdx) {
         return `<div class="srch">${IC.srch}<input class="inp" data-q placeholder="種目名の一部(例: インクライン、スクワット、ロウ)" value="${esc(this.q)}"></div>
           <div class="cands">${this.cands()}</div>`;
       }
-      if (!this.sets.length) { this.sets = lastSets(this.sel.n); this.ph = defaultPH(this.sel.n); }
+      if (!this.sets.length) { this.sets = lastSets(this.sel.n); this.ph = defaultPH(this.sel.n); this.bw = defaultBW(this.sel.n); }
       const w = weightAt(CUR);
-      const dumb = this.sel.e === "ダンベル" || this.sel.e === "ケトルベル";
+      const canBW = isBW(this.sel.n);          /* 自重/加重を選べる種目か */
+      const useBW = canBW && this.bw;
+      const frac = bwFrac(this.sel.n), bwLoad = frac * w;
+      const dumb = !canBW && (this.sel.e === "ダンベル" || this.sel.e === "ケトルベル");
       const reps = this.sets.reduce((a, s) => a + num(s.rep), 0);
       const estRest = S.set.restSec * restFactor(this.sel.met);
       const estMin = (reps * S.set.repSec + this.sets.length * estRest) / 60;
-      const vol = this.sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0) * (this.ph ? 2 : 1);
+      const mul = this.ph ? 2 : 1;
+      const vol = this.sets.reduce((a, s) => a + ((useBW ? bwLoad : 0) + num(s.kg)) * mul * num(s.rep), 0);
       return `<div class="row" style="margin-bottom:10px">
           ${this.editIdx == null ? `<button class="btn sm gh" data-act="backLift">${IC.L}戻る</button>` : ""}
           <span class="sp" style="flex:1"></span>
           <button class="btn sm gh" data-act="favLift">${IC.star}${S.fav.l.includes(this.sel.n) ? "よく使うから外す" : "よく使うに追加"}</button>
         </div>
         <div style="font-size:16px;font-weight:600;margin-bottom:${dumb ? "9" : "11"}px">${esc(this.sel.n)}</div>
+        ${canBW ? `<div class="fld" style="margin-bottom:11px"><label>負荷の種類</label>
+          <div class="pills">
+            <button class="pill" data-act="bwMode" data-v="1" aria-pressed="${!!useBW}">自重のみ</button>
+            <button class="pill" data-act="bwMode" data-v="0" aria-pressed="${!useBW}">加重あり</button>
+          </div>
+          <div class="sub" style="margin-top:5px">${useBW
+      ? `体重 ${r1(w)}kg × <b>${r0(frac * 100)}%</b> = <b>${r1(bwLoad)}kg</b> が1レップの負荷。<b>回数だけ</b>入れてください。`
+      : `体重ぶん(${r1(bwLoad)}kg)に<b>追加した重量</b>を入力してください。ディップスベルトやウェイトベストの重さです。`}</div></div>` : ""}
         ${dumb ? `<div class="fld" style="margin-bottom:11px"><label>入力する重量</label>
           <div class="pills">
             <button class="pill" data-act="ph" data-v="1" aria-pressed="${!!this.ph}">片手の重量</button>
             <button class="pill" data-act="ph" data-v="0" aria-pressed="${!this.ph}">合計の重量</button>
           </div>
           <div class="sub" style="margin-top:5px">${this.ph ? "左右あるので、ボリュームは入力した重量の<b>2倍</b>で集計します" : "入力した重量をそのまま集計します(ゴブレット等、1個を両手で持つ種目)"}</div></div>` : ""}
-        <div class="fld" style="margin-bottom:12px"><label>まとめて入力 — 同じ重量で何セットか</label>
+        <div class="fld" style="margin-bottom:12px"><label>まとめて入力 — 同じ${useBW ? "回数" : "重量"}で何セットか</label>
           <div class="row" style="gap:6px">
-            <input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" data-bulk="kg" style="flex:1;min-width:0">
-            <span style="color:var(--muted);font-weight:700">×</span>
+            ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${canBW ? "+kg" : "kg"}" data-bulk="kg" style="flex:1;min-width:0">
+            <span style="color:var(--muted);font-weight:700">×</span>`}
             <input class="inp mono n" type="number" inputmode="numeric" step="1" min="1" placeholder="回" data-bulk="rep" style="flex:1;min-width:0">
             <span style="color:var(--muted);font-weight:700">×</span>
             <input class="inp mono n" type="number" inputmode="numeric" step="1" min="1" max="20" value="3" data-bulk="set" style="flex:1;min-width:0">
             <span style="color:var(--muted);font-size:12px">セット</span>
             <button class="btn sm pri" data-act="bulkAdd" style="flex:none">${IC.plus}</button>
           </div></div>
-        <div class="setrow" style="color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.06em">
-          <span></span><span>重量 (kg)${dumb && this.ph ? "/片手" : ""}</span><span>回数</span><span></span></div>
-        ${this.sets.map((s, i) => `<div class="setrow">
+        <div class="setrow${useBW ? " bw" : ""}" style="color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.06em">
+          <span></span>${useBW ? "" : `<span>${canBW ? "加重 (+kg)" : "重量 (kg)"}${dumb && this.ph ? "/片手" : ""}</span>`}<span>回数</span><span></span></div>
+        ${this.sets.map((s, i) => `<div class="setrow${useBW ? " bw" : ""}">
           <span class="idx">${i + 1}</span>
-          <input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" value="${s.kg}" data-set="${i}" data-fld="kg"${i === 0 ? " data-first" : ""}>
-          <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" value="${s.rep}" data-set="${i}" data-fld="rep">
+          ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" value="${s.kg}" data-set="${i}" data-fld="kg"${i === 0 ? " data-first" : ""}>`}
+          <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" value="${s.rep}" data-set="${i}" data-fld="rep"${useBW && i === 0 ? " data-first" : ""}>
           <button class="x" data-act="delSet" data-i="${i}" aria-label="${i + 1}セット目を削除">${IC.x}</button>
         </div>`).join("")}
         <button class="btn sm add blk" data-act="addSet" style="margin-top:4px">${IC.plus}セットを足す</button>
@@ -4014,10 +4066,11 @@ document.addEventListener("click", ev => {
     case "backLift": SH.sel = null; SH.sets = []; drawSheet(); return;
     case "favLift": { const n = SH.sel.n, x = S.fav.l.indexOf(n); x < 0 ? S.fav.l.unshift(n) : S.fav.l.splice(x, 1); save(); drawSheet(); return; }
     case "ph": pullSets(); SH.ph = a.dataset.v === "1" ? 1 : 0; drawSheet(); return;
+    case "bwMode": pullSets(); SH.bw = a.dataset.v === "1" ? 1 : 0; drawSheet(); return;
     case "bulkAdd": {
       pullSets();
       const host = document.getElementById("sheetHost");
-      const bv = k => num(host.querySelector(`[data-bulk="${k}"]`).value);
+      const bv = k => { const e = host.querySelector(`[data-bulk="${k}"]`); return e ? num(e.value) : 0; };
       const kg = bv("kg"), rep = bv("rep"), n = cl(r0(bv("set")), 1, 20);
       if (rep <= 0) { toast("回数を入れてください"); return; }
       /* 空の行しか無ければ置き換え、入力済みなら後ろに足す */
@@ -4031,8 +4084,8 @@ document.addEventListener("click", ev => {
     case "saveLift": {
       pullSets();
       const sets = SH.sets.filter(s => num(s.kg) > 0 || num(s.rep) > 0).map(s => ({ kg: num(s.kg), rep: num(s.rep) }));
-      if (!sets.length) { toast("重量と回数を入れてください"); return; }
-      const rec = { n: SH.sel.n, met: SH.sel.met, sets, ph: SH.ph ? 1 : 0 };
+      if (!sets.length) { toast(SH.bw ? "回数を入れてください" : "重量と回数を入れてください"); return; }
+      const rec = { n: SH.sel.n, met: SH.sel.met, sets, ph: SH.ph ? 1 : 0, bw: SH.bw ? 1 : 0 };
       edit(CUR, d => { if (SH.editIdx == null) d.lifts.push(rec); else d.lifts[SH.editIdx] = rec; if (d.td == null) d.td = 1; });
       closeSheet(); render(); toast(`${rec.n} を記録`); return;
     }
