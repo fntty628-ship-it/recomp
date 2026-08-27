@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="計量室">
@@ -88,11 +88,23 @@
 }
 
 *{box-sizing:border-box}
+/* 画面の縮尺を固定する。touch-action:pan-y で縦スクロールだけ許可し、
+   ピンチ拡大・ダブルタップ拡大・横方向のパンを止める。
+   日付切替の左右スワイプは JS の touch イベントで拾うのでそのまま動く。 */
+html{
+  overflow-x:hidden; touch-action:pan-y;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
+}
 body{
   margin:0; background:var(--plane); color:var(--ink);
   font-family:var(--fs); font-size:15px; line-height:1.6;
-  -webkit-text-size-adjust:100%; overscroll-behavior-y:none;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  overflow-x:hidden; overscroll-behavior:none; touch-action:pan-y;
 }
+/* 中で横スクロールが要る箇所だけ横方向を戻す */
+.chart-wrap,.tblwrap{touch-action:pan-x pan-y}
+/* 入力欄のフォーカス時に iOS が勝手に寄せないよう、文字を16px以上に保つ */
+input.inp,select.inp,textarea.inp{font-size:16px}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none;padding:0}
 :focus-visible{outline:2.5px solid var(--s3);outline-offset:2px;border-radius:6px}
@@ -610,6 +622,22 @@ kbd{font-family:var(--fm);font-size:11px;border:1.5px solid var(--hair2);border-
     var r = e.reason;
     window.__fatal("Promise: " + ((r && r.message) || r), "");
   });
+
+  /* iOS Safari は user-scalable=no を無視するので、拡大の入り口を塞ぐ。
+     gesture* は iOS 独自、touchmove の2本指はその保険。 */
+  ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
+    document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+  });
+  document.addEventListener("touchmove", function (e) {
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  /* ダブルタップ拡大よけ(300ms以内の2回目のタップを無効化) */
+  var lastTap = 0;
+  document.addEventListener("touchend", function (e) {
+    var now = Date.now();
+    if (now - lastTap < 300) e.preventDefault();
+    lastTap = now;
+  }, { passive: false });
 
   mark("b2", "OK");
   var ua = document.getElementById("bua");
@@ -1350,7 +1378,69 @@ const FOODS = [
 {n:"飲むヨーグルト",c:"菓子・デザート",kcal:65,p:2.9,f:0.5,cb:12.2,s:0.1,u:[["1本",180]]},
 {n:"プロテインアイス",c:"菓子・デザート",kcal:100,p:10.0,f:1.0,cb:13.0,s:0.2,u:[["1個",120]]},
 {n:"ゼロカロリーゼリー",c:"菓子・デザート",kcal:5,p:0.0,f:0.0,cb:1.5,s:0.0,u:[["1個",150]]},
-{n:"寒天ゼリー",c:"菓子・デザート",kcal:35,p:0.3,f:0.0,cb:8.5,s:0.0,u:[["1個",130]]}
+{n:"寒天ゼリー",c:"菓子・デザート",kcal:35,p:0.3,f:0.0,cb:8.5,s:0.0,u:[["1個",130]]},{n:"つけ麺(魚介豚骨)",c:"丼・麺・ご飯物",kcal:145,p:6.1,f:5.2,cb:18.1,s:1.1,u:[["1食(並)",650],["1食(大)",850]]},
+{n:"つけ麺(濃厚豚骨魚介)",c:"丼・麺・ご飯物",kcal:148,p:6.2,f:5.6,cb:18.0,s:1.2,u:[["1食(並)",680]]},
+{n:"つけ麺(昆布水)",c:"丼・麺・ご飯物",kcal:100,p:4.3,f:2.9,cb:14.5,s:0.8,u:[["1食",700]]},
+{n:"つけ麺(淡麗・中華そば)",c:"丼・麺・ご飯物",kcal:120,p:5.3,f:3.5,cb:17.4,s:0.9,u:[["1食",620]]},
+{n:"つけ麺(味噌)",c:"丼・麺・ご飯物",kcal:145,p:6.0,f:5.4,cb:17.8,s:1.2,u:[["1食",650]]},
+{n:"つけ麺(辛味)",c:"丼・麺・ご飯物",kcal:140,p:5.8,f:5.0,cb:17.6,s:1.2,u:[["1食",650]]},
+{n:"つけ麺(カレー)",c:"丼・麺・ご飯物",kcal:150,p:5.9,f:5.8,cb:18.3,s:1.1,u:[["1食",650]]},
+{n:"つけ麺(ベジポタ)",c:"丼・麺・ご飯物",kcal:140,p:5.6,f:4.9,cb:18.0,s:1.0,u:[["1食",650]]},
+{n:"つけ麺(あつもり)",c:"丼・麺・ご飯物",kcal:138,p:5.8,f:4.7,cb:17.9,s:1.1,u:[["1食",650]]},
+{n:"つけそば(淡麗醤油)",c:"丼・麺・ご飯物",kcal:125,p:5.5,f:3.6,cb:18.1,s:1.0,u:[["1食",620]]},
+{n:"和え玉",c:"丼・麺・ご飯物",kcal:167,p:7.0,f:4.5,cb:24.5,s:1.1,u:[["1食",150]]},
+{n:"替え玉",c:"丼・麺・ご飯物",kcal:133,p:4.9,f:0.6,cb:27.9,s:0.2,u:[["1玉",120],["半玉",60]]},
+{n:"塩ラーメン",c:"丼・麺・ご飯物",kcal:62,p:2.5,f:1.8,cb:9.0,s:0.9,u:[["1杯",700]]},
+{n:"淡麗醤油ラーメン",c:"丼・麺・ご飯物",kcal:60,p:2.4,f:1.7,cb:8.8,s:0.9,u:[["1杯",700]]},
+{n:"中華そば(あっさり)",c:"丼・麺・ご飯物",kcal:63,p:2.5,f:1.8,cb:9.2,s:0.9,u:[["1杯",650]]},
+{n:"鶏白湯ラーメン",c:"丼・麺・ご飯物",kcal:85,p:3.6,f:3.1,cb:10.6,s:0.9,u:[["1杯",700]]},
+{n:"濃厚鶏白湯ラーメン",c:"丼・麺・ご飯物",kcal:100,p:4.2,f:3.6,cb:12.5,s:1.0,u:[["1杯",700]]},
+{n:"鶏そば(淡麗)",c:"丼・麺・ご飯物",kcal:65,p:2.9,f:1.7,cb:9.6,s:0.9,u:[["1杯",680]]},
+{n:"煮干しラーメン",c:"丼・麺・ご飯物",kcal:68,p:2.9,f:1.9,cb:9.9,s:1.0,u:[["1杯",700]]},
+{n:"濃厚煮干しラーメン",c:"丼・麺・ご飯物",kcal:95,p:4.0,f:3.4,cb:11.9,s:1.1,u:[["1杯",700]]},
+{n:"魚介豚骨ラーメン(Wスープ)",c:"丼・麺・ご飯物",kcal:92,p:3.9,f:3.3,cb:11.5,s:1.0,u:[["1杯",700]]},
+{n:"ワンタン麺",c:"丼・麺・ご飯物",kcal:70,p:3.2,f:2.1,cb:9.8,s:0.9,u:[["1杯",700]]},
+{n:"チャーシュー麺",c:"丼・麺・ご飯物",kcal:100,p:6.0,f:4.2,cb:9.4,s:1.0,u:[["1杯",750]]},
+{n:"ネギラーメン",c:"丼・麺・ご飯物",kcal:72,p:2.9,f:2.3,cb:10.1,s:0.9,u:[["1杯",720]]},
+{n:"辛味噌ラーメン",c:"丼・麺・ご飯物",kcal:90,p:3.8,f:3.3,cb:11.2,s:1.2,u:[["1杯",720]]},
+{n:"激辛味噌ラーメン",c:"丼・麺・ご飯物",kcal:95,p:4.0,f:3.5,cb:11.8,s:1.3,u:[["1杯",750]]},
+{n:"味噌バターコーンラーメン",c:"丼・麺・ご飯物",kcal:97,p:3.9,f:3.9,cb:11.7,s:1.1,u:[["1杯",750]]},
+{n:"タンメン",c:"丼・麺・ご飯物",kcal:65,p:2.9,f:1.9,cb:9.3,s:0.9,u:[["1杯",750]]},
+{n:"味噌タンメン",c:"丼・麺・ご飯物",kcal:78,p:3.4,f:2.7,cb:10.2,s:1.1,u:[["1杯",750]]},
+{n:"ちゃんぽん",c:"丼・麺・ご飯物",kcal:78,p:3.6,f:2.6,cb:10.3,s:0.9,u:[["1杯",750]]},
+{n:"皿うどん",c:"丼・麺・ご飯物",kcal:175,p:6.0,f:8.5,cb:19.0,s:1.1,u:[["1皿",400]]},
+{n:"汁なし担担麺",c:"丼・麺・ご飯物",kcal:200,p:8.0,f:9.5,cb:21.0,s:1.2,u:[["1杯",350]]},
+{n:"酸辣湯麺",c:"丼・麺・ご飯物",kcal:75,p:3.4,f:2.4,cb:10.2,s:1.0,u:[["1杯",650]]},
+{n:"冷やしラーメン",c:"丼・麺・ご飯物",kcal:65,p:2.8,f:1.8,cb:9.6,s:0.9,u:[["1杯",700]]},
+{n:"もつ煮ラーメン",c:"丼・麺・ご飯物",kcal:95,p:4.3,f:3.8,cb:11.0,s:1.1,u:[["1杯",720]]},
+{n:"ベジポタラーメン",c:"丼・麺・ご飯物",kcal:90,p:3.7,f:3.1,cb:11.5,s:0.9,u:[["1杯",700]]},
+{n:"博多ラーメン",c:"丼・麺・ご飯物",kcal:85,p:3.7,f:3.2,cb:10.3,s:1.0,u:[["1杯",600]]},
+{n:"久留米ラーメン",c:"丼・麺・ご飯物",kcal:95,p:4.1,f:3.7,cb:11.3,s:1.0,u:[["1杯",650]]},
+{n:"熊本ラーメン",c:"丼・麺・ご飯物",kcal:92,p:3.9,f:3.6,cb:11.0,s:1.0,u:[["1杯",650]]},
+{n:"鹿児島ラーメン",c:"丼・麺・ご飯物",kcal:80,p:3.4,f:2.8,cb:10.2,s:1.0,u:[["1杯",700]]},
+{n:"和歌山ラーメン",c:"丼・麺・ご飯物",kcal:85,p:3.7,f:3.1,cb:10.5,s:1.1,u:[["1杯",650]]},
+{n:"尾道ラーメン",c:"丼・麺・ご飯物",kcal:88,p:3.6,f:3.4,cb:10.6,s:1.0,u:[["1杯",650]]},
+{n:"徳島ラーメン",c:"丼・麺・ご飯物",kcal:95,p:4.3,f:3.6,cb:11.4,s:1.2,u:[["1杯",650]]},
+{n:"佐野ラーメン",c:"丼・麺・ご飯物",kcal:68,p:2.8,f:1.9,cb:10.0,s:0.9,u:[["1杯",700]]},
+{n:"白河ラーメン",c:"丼・麺・ご飯物",kcal:70,p:3.0,f:2.0,cb:10.1,s:0.9,u:[["1杯",700]]},
+{n:"喜多方ラーメン",c:"丼・麺・ご飯物",kcal:75,p:3.1,f:2.2,cb:11.0,s:0.9,u:[["1杯",700]]},
+{n:"旭川ラーメン",c:"丼・麺・ご飯物",kcal:82,p:3.4,f:3.0,cb:10.2,s:1.0,u:[["1杯",700]]},
+{n:"函館塩ラーメン",c:"丼・麺・ご飯物",kcal:62,p:2.6,f:1.7,cb:9.1,s:0.9,u:[["1杯",700]]},
+{n:"札幌味噌ラーメン",c:"丼・麺・ご飯物",kcal:88,p:3.7,f:3.4,cb:10.6,s:1.1,u:[["1杯",750]]},
+{n:"富山ブラック",c:"丼・麺・ご飯物",kcal:78,p:3.5,f:2.4,cb:10.4,s:1.5,u:[["1杯",700]]},
+{n:"燕三条背脂ラーメン",c:"丼・麺・ご飯物",kcal:105,p:4.2,f:4.5,cb:12.0,s:1.2,u:[["1杯",700]]},
+{n:"台湾ラーメン",c:"丼・麺・ご飯物",kcal:75,p:3.6,f:2.6,cb:9.5,s:1.1,u:[["1杯",700]]},
+{n:"担担麺(汁あり)",c:"丼・麺・ご飯物",kcal:105,p:4.5,f:5.5,cb:9.5,s:1.1,u:[["1杯",700]]},
+{n:"味噌ラーメン(北海道風)",c:"丼・麺・ご飯物",kcal:90,p:3.8,f:3.6,cb:10.8,s:1.1,u:[["1杯",750]]},
+{n:"辛麺",c:"丼・麺・ご飯物",kcal:72,p:3.6,f:2.3,cb:9.3,s:1.1,u:[["1杯",700]]},
+{n:"味噌煮込みラーメン",c:"丼・麺・ご飯物",kcal:92,p:4.0,f:3.5,cb:11.2,s:1.2,u:[["1杯",720]]},
+{n:"チャーシュー(豚バラ)",c:"料理・おかず",kcal:280,p:14.0,f:22.0,cb:5.0,s:1.5,u:[["1枚",30],["3枚",90]]},
+{n:"チャーシュー(肩ロース)",c:"料理・おかず",kcal:180,p:18.0,f:10.0,cb:4.0,s:1.4,u:[["1枚",30]]},
+{n:"鶏チャーシュー",c:"料理・おかず",kcal:120,p:20.0,f:3.0,cb:2.0,s:1.2,u:[["1枚",25]]},
+{n:"味玉(味付け卵)",c:"料理・おかず",kcal:145,p:12.0,f:9.5,cb:2.0,s:1.0,u:[["1個",55],["半分",28]]},
+{n:"メンマ",c:"料理・おかず",kcal:30,p:1.0,f:0.5,cb:5.5,s:2.2,u:[["1食分",20]]},
+{n:"背脂",c:"料理・おかず",kcal:700,p:3.0,f:75.0,cb:0.0,s:0.3,u:[["1杯分",20],["マシ",40]]},
+{n:"ラーメンのスープ(残す分)",c:"丼・麺・ご飯物",kcal:35,p:1.5,f:2.0,cb:2.5,s:1.6,u:[["1杯分",300]]}
 ];
 const LIFTS = [
 {n:"ベンチプレス",m:"胸",e:"バーベル",met:5.0,k:"bench press ベンチプレス BP フラットベンチ"},
@@ -1818,7 +1908,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-26a";
+const APP_VER = "2026-08-26f";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -1932,10 +2022,12 @@ function day(k) {
   if (!d) return blank();
   return Object.assign(blank(), d);
 }
+let DATA_STAMP = 0;
 function edit(k, fn) {
   if (!S.days[k]) S.days[k] = blank();
   fn(S.days[k]);
   S.days[k].u = Date.now();
+  DATA_STAMP++;
   save();
 }
 const hasData = d => !!(d.meals.length || d.lifts.length || d.acts.length || d.inc.length || d.steps || d.w != null || d.bf != null || d.note);
@@ -1985,17 +2077,27 @@ function actSteps(a) {
   const spm = a.met >= 8 ? 165 : a.met >= 6 ? 145 : 115;
   return Math.round(spm * num(a.min));
 }
+/* セット間の休憩は種目によってまるで違う。スクワットやデッドリフトで
+   3分休むのと、サイドレイズで45秒しか休まないのを同じ90秒で計算すると、
+   高重量の多関節種目が大きく過小評価になる。強度の段階で倍率をかける。 */
+function restFactor(met) {
+  if (met >= 7.5) return 0.9;   /* 自重の高強度・サーキット系はインターバルが短い */
+  if (met >= 6) return 2.0;     /* 高重量の多関節(スクワット/デッド/クリーン) */
+  if (met >= 4.5) return 1.35;  /* 通常の多関節(ベンチ/ロウ/プレス) */
+  return 0.7;                   /* 単関節(カール/レイズ/エクステンション) */
+}
 function liftCalc(l, w) {
   const sets = l.sets || [];
   const reps = sets.reduce((a, s) => a + num(s.rep), 0);
   /* 所要時間はレップ数から見積もる。28レップのセットと8レップのセットでは
      かかる時間がまるで違うので、セット数だけで一律に換算すると高レップが過小評価になる。 */
-  const min = num(l.min) || (reps * S.set.repSec + sets.length * S.set.restSec) / 60;
+  const rest = S.set.restSec * restFactor(l.met);
+  const min = num(l.min) || (reps * S.set.repSec + sets.length * rest) / 60;
   /* ダンベル・ケトルベルは片手の重量で入力するのが普通なので、
      ボリュームは左右合計(×2)にする。ゴブレット等の片方だけ持つ種目は ph=0 にする。 */
   const mult = l.ph ? 2 : 1;
   return {
-    min, reps, mult, kcal: kcalMet(l.met, w, min),
+    min, reps, mult, rest, kcal: kcalMet(l.met, w, min),
     vol: sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0) * mult,
     orm: sets.reduce((a, s) => Math.max(a, num(s.rep) ? num(s.kg) * (1 + num(s.rep) / 30) : 0), 0)
   };
@@ -2036,6 +2138,24 @@ function calc(k) {
   };
 }
 
+/* 直近の記録から「トレ日の消費 − オフ日の消費」を測る。
+   サンプルが足りないうちは null を返し、設定値を使う。
+   plan() から毎回呼ばれるので、記録が変わるまでは結果を使い回す。 */
+let _mbCache = null, _mbStamp = -1;
+function measuredBonus() {
+  if (_mbStamp === DATA_STAMP) return _mbCache;
+  const ks = Object.keys(S.days).filter(k => k <= TODAY).sort().slice(-28);
+  let tS = 0, tN = 0, rS = 0, rN = 0;
+  for (const k of ks) {
+    const c = calc(k);
+    if (!c.logged) continue;
+    if (c.isTrain) { tS += c.burn; tN++; } else { rS += c.burn; rN++; }
+  }
+  _mbCache = (tN >= 3 && rN >= 2) ? { diff: tS / tN - rS / rN, tN, rN } : null;
+  _mbStamp = DATA_STAMP;
+  return _mbCache;
+}
+
 /* -------------------------------------------------------------- 目標モデル */
 function goalDays() { return Math.max(1, diffD(TODAY, S.goal.date)); }
 /* 目標体重と期日から必要な赤字を出し、それを「食事を減らす分」と
@@ -2074,25 +2194,50 @@ function plan(k) {
     out.fromFood = out.deficit - out.fromMove;
   }
   out.c = Math.max(g.cMinKg * w, (out.kcal - out.p * 4 - out.f * 9) / 4);
-  /* カーボ循環: 週の合計を変えずにトレ日へ寄せる。
-     オフ日が下限(体重×cMinKg)を割るときは下限で止め、トレ日側を再計算する。 */
-  const t = cl(g.trainDays, 0, 7), cFloor = g.cMinKg * w;
-  if (t > 0 && t < 7) {
-    out.cTrain = out.c * g.carbHi;
-    out.cRest = (7 * out.c - t * out.cTrain) / (7 - t);
-    if (out.cRest < cFloor) {
-      out.cRest = cFloor;
-      out.cTrain = (7 * out.c - (7 - t) * cFloor) / t;
-      if (out.cTrain < out.cRest) { out.cTrain = out.c; out.cRest = out.c; }
-    }
-  } else { out.cTrain = out.c; out.cRest = out.c; }
+  /* 目標消費をトレ日とオフ日に振り分ける。差は trainBonus、週の平均は out.burn のまま。
+       burnTrain - burnRest = trainBonus
+       td*burnTrain + (7-td)*burnRest = 7*burn                                  */
+  const td = cl(g.trainDays, 0, 7);
+  const mb = (g.bonusAuto == null ? 1 : g.bonusAuto) ? measuredBonus() : null;
+  const bonus = mb ? cl(mb.diff, 0, 1500) : Math.max(0, g.trainBonus == null ? 300 : g.trainBonus);
+  out.bonus = bonus; out.td = td; out.mb = mb;
+  out.bonusSrc = mb ? `実績 (トレ${mb.tN}日 / オフ${mb.rN}日の平均)` : "設定値";
+  if (td > 0 && td < 7) {
+    out.burnTrain = out.burn + (bonus * (7 - td)) / 7;
+    out.burnRest = out.burn - (bonus * td) / 7;
+  } else { out.burnTrain = out.burn; out.burnRest = out.burn; }
+
+  /* 摂取は「その日の消費 − 赤字」で出す。これで 1日の± が毎日同じになり、
+     よく動いた日ほど食べられる。炭水化物の差は自動的に trainBonus/4 グラムになる。 */
+  const fixedK = out.p * 4 + out.f * 9;        /* P と F は毎日同じ */
+  const floorK = fixedK + g.cMinKg * w * 4;    /* 摂取の下限 */
+  out.kcalTrain = out.burnTrain - out.deficit;
+  out.kcalRest = out.burnRest - out.deficit;
+  /* 下限を割る日は、足りない赤字を消費側に回して ± を保つ */
+  if (out.kcalTrain < floorK) { out.kcalTrain = floorK; out.burnTrain = floorK + out.deficit; out.floorHit = true; }
+  if (out.kcalRest < floorK) { out.kcalRest = floorK; out.burnRest = floorK + out.deficit; out.floorHit = true; }
+  out.cTrain = (out.kcalTrain - fixedK) / 4;
+  out.cRest = (out.kcalRest - fixedK) / 4;
+  /* 週の平均は実際の配分から取り直す(下限で持ち上がったときに整合させる) */
+  if (td > 0 && td < 7) {
+    out.burn = (td * out.burnTrain + (7 - td) * out.burnRest) / 7;
+    out.kcal = (td * out.kcalTrain + (7 - td) * out.kcalRest) / 7;
+    out.c = (td * out.cTrain + (7 - td) * out.cRest) / 7;
+  } else { out.burn = out.burnTrain; out.kcal = out.kcalTrain; out.c = out.cTrain; }
+  out.fromMove = out.burn - out.maint;
+  out.fromFood = out.deficit - out.fromMove;
   return out;
 }
 /* その日の目標(トレ日/オフ日でカーボが変わる) */
 function dayTarget(k) {
   const pl = plan(k), tr = calc(k).isTrain;
-  const c = tr ? pl.cTrain : pl.cRest;
-  return { p: pl.p, f: pl.f, c, kcal: pl.p * 4 + pl.f * 9 + c * 4, burn: pl.burn, isTrain: tr, pl };
+  return {
+    p: pl.p, f: pl.f,
+    c: tr ? pl.cTrain : pl.cRest,
+    kcal: tr ? pl.kcalTrain : pl.kcalRest,
+    burn: tr ? pl.burnTrain : pl.burnRest,
+    isTrain: tr, pl
+  };
 }
 
 /* --------------------------------------------------------- 週次カロリー精算 */
@@ -2160,7 +2305,19 @@ const SYN = [
   ["かしわもち", "柏餅"], ["くさもち", "草餅"], ["しらたま", "白玉"],
   ["あんにん", "杏仁"], ["いまがわやき", "今川焼き"], ["にんぎょうやき", "人形焼"],
   ["かきのたね", "柿の種"], ["あげせんべい", "揚げせんべい"], ["なまちょこ", "生チョコ"],
-  ["こおり", "氷"], ["あめ", "あめ玉"], ["むしぱん", "蒸しパン"]
+  ["こおり", "氷"], ["あめ", "あめ玉"], ["むしぱん", "蒸しパン"],
+  /* 麺類 */
+  ["つけめん", "つけ麺"], ["あえだま", "和え玉"], ["かえだま", "替え玉"],
+  ["こんぶすい", "昆布水"], ["ぎょかい", "魚介"], ["とんこつ", "豚骨"],
+  ["にぼし", "煮干し"], ["とりぱいたん", "鶏白湯"], ["とりそば", "鶏そば"],
+  ["しお", "塩"], ["しょうゆ", "醤油"], ["みそ", "味噌"], ["からみそ", "辛味噌"],
+  ["せあぶら", "背脂"], ["ちゃーしゅー", "チャーシュー"], ["あじたま", "味玉"],
+  ["たんめん", "タンメン"], ["ちゃんぽん", "ちゃんぽん"], ["さらうどん", "皿うどん"],
+  ["たんたんめん", "担担麺"], ["さんらーたんめん", "酸辣湯麺"], ["わんたんめん", "ワンタン麺"],
+  ["はかた", "博多"], ["くるめ", "久留米"], ["くまもと", "熊本"], ["かごしま", "鹿児島"],
+  ["わかやま", "和歌山"], ["おのみち", "尾道"], ["とくしま", "徳島"], ["さの", "佐野"],
+  ["しらかわ", "白河"], ["きたかた", "喜多方"], ["あさひかわ", "旭川"], ["はこだて", "函館"],
+  ["さっぽろ", "札幌"], ["とやま", "富山"], ["つばめさんじょう", "燕三条"], ["たいわん", "台湾"]
 ];
 function search(list, q, keyf, lim) {
   const t = normKana(q);
@@ -2946,7 +3103,7 @@ function vGoal() {
     <div class="card-b">
       <div class="mstat" style="margin-bottom:12px">
         <div class="b" style="background:var(--s1-soft)"><div class="k">目標摂取</div><div class="v">${fmt(pl.kcal)}<small> kcal</small></div></div>
-        <div class="b" style="background:var(--s2-soft)"><div class="k">目標消費</div><div class="v">${fmt(pl.burn)}<small> kcal</small></div></div>
+        <div class="b" style="background:var(--s2-soft)"><div class="k">目標消費(平均)</div><div class="v">${fmt(pl.burn)}<small> kcal</small></div></div>
         <div class="b"><div class="k">1日の赤字</div><div class="v">${fmt(pl.deficit)}<small> kcal</small></div></div>
         <div class="b"><div class="k">想定ペース</div><div class="v">${r1(paceKgWk)}<small> kg/週</small></div></div>
       </div>
@@ -2970,13 +3127,28 @@ function vGoal() {
         ${pl.floorHit ? `<br>${IC.warn} 摂取が下限(P・F・炭水化物の最低量)に達したため、足りない赤字は消費側に回しています。` : ""}
       </div>
       <div class="plan">
-        <div class="planrow"><span class="dd">P</span><span class="nm">タンパク質<i>体重×${r1(g.pKg)} g</i></span><span class="v">${r0(pl.p)} g</span></div>
-        <div class="planrow"><span class="dd">F</span><span class="nm">脂質<i>体重×${r1(g.fKg)} g / 下限は守る</i></span><span class="v">${r0(pl.f)} g</span></div>
-        <div class="planrow"><span class="dd">C</span><span class="nm">炭水化物(トレ日)<i>強度を落とさないための山</i></span><span class="v">${r0(pl.cTrain)} g</span></div>
-        <div class="planrow"><span class="dd">C</span><span class="nm">炭水化物(オフ日)<i>下限 体重×${r1(g.cMinKg)} g</i></span><span class="v">${r0(pl.cRest)} g</span></div>
+        <div class="planrow"><span class="dd">毎日</span>
+          <span class="nm">1日の±<i>どの日も同じ赤字を狙う</i></span>
+          <span class="v" style="color:var(--s2)">−${fmt(pl.deficit)} kcal</span></div>
+        <div class="planrow"><span class="dd">P</span><span class="nm">タンパク質<i>体重×${r1(g.pKg)} g・毎日同じ</i></span><span class="v">${r0(pl.p)} g</span></div>
+        <div class="planrow"><span class="dd">F</span><span class="nm">脂質<i>体重×${r1(g.fKg)} g・毎日同じ</i></span><span class="v">${r0(pl.f)} g</span></div>
+      </div>
+      <div class="slot-h">トレ日 (週${pl.td}日) とオフ日 (週${7 - pl.td}日)<span class="ln"></span>
+        <span class="chip ${pl.mb ? "good" : ""}">差 ${fmt(pl.bonus)} kcal · ${esc(pl.bonusSrc)}</span></div>
+      <div class="tblwrap" style="max-height:none">
+        <table class="dt"><thead><tr><th></th><th>トレ日</th><th>オフ日</th><th>差</th></tr></thead><tbody>
+          <tr><td>目標消費</td><td>${fmt(pl.burnTrain)}</td><td>${fmt(pl.burnRest)}</td><td>${fmt(pl.burnTrain - pl.burnRest)}</td></tr>
+          <tr><td>目標摂取</td><td>${fmt(pl.kcalTrain)}</td><td>${fmt(pl.kcalRest)}</td><td>${fmt(pl.kcalTrain - pl.kcalRest)}</td></tr>
+          <tr><td>炭水化物</td><td>${r0(pl.cTrain)} g</td><td>${r0(pl.cRest)} g</td><td>${r0(pl.cTrain - pl.cRest)} g</td></tr>
+          <tr><td>±</td><td>−${fmt(pl.deficit)}</td><td>−${fmt(pl.deficit)}</td><td>0</td></tr>
+        </tbody></table>
       </div>
       ${pl.capped ? `<div class="note w" style="margin-top:10px">${IC.warn} 目標に必要な赤字が「体重の1.2%/週」を超えたため、筋量を守るためにそこで止めています。期日までに届かない場合は目標体重か日付を見直すのが正解です。</div>` : ""}
-      <div class="note" style="margin-top:10px">1日の赤字は <b>体脂肪1kg = 7,200 kcal</b> で換算。P/Fを先に確保して、残りを炭水化物に回す順番で組んでいます。</div>
+      <div class="note" style="margin-top:10px">
+        1日の赤字は <b>体脂肪1kg = 7,200 kcal</b> で換算。<b>摂取は「その日の目標消費 − 赤字」</b>で決まるので、
+        よく動く日ほど食べられます。P と F は毎日固定で、差は全部炭水化物に出ます。
+        炭水化物の差(${r0(pl.cTrain - pl.cRest)}g)を広げたいときは、下の<b>「トレ日の消費上乗せ」</b>を増やしてください(上乗せ ÷ 4 グラム)。
+      </div>
     </div>
   </div>
 
@@ -2992,8 +3164,18 @@ function vGoal() {
         <div class="fld"><label for="gF">脂質 (g/kg)</label><input id="gF" class="inp mono n" type="number" step="0.05" value="${g.fKg}" data-g="fKg"></div>
         <div class="fld"><label for="gC">炭水化物の下限 (g/kg)</label><input id="gC" class="inp mono n" type="number" step="0.1" value="${g.cMinKg}" data-g="cMinKg"></div>
         <div class="fld"><label for="gTD">週のトレ日数</label><input id="gTD" class="inp mono n" type="number" min="0" max="7" step="1" value="${g.trainDays}" data-g="trainDays"></div>
-        <div class="fld"><label for="gCH">トレ日カーボ倍率</label><input id="gCH" class="inp mono n" type="number" step="0.05" min="1" max="2" value="${g.carbHi}" data-g="carbHi"></div>
+        <div class="fld"><label for="gTB">トレ日の消費上乗せ (kcal)</label>
+          <input id="gTB" class="inp mono n" type="number" step="25" min="0" max="1200" value="${r0(g.trainBonus)}" data-g="trainBonus"${(g.bonusAuto == null ? 1 : g.bonusAuto) && pl.mb ? " disabled" : ""}></div>
         <div class="fld"><label for="gSW">開始体重 (kg)</label><input id="gSW" class="inp mono n" type="number" step="0.1" value="${g.startW}" data-g="startW"></div>
+      </div>
+      <div class="fld" style="margin-top:11px"><label>トレ日とオフ日の消費差</label>
+        <div class="pills">
+          <button class="pill" data-act="bonusAuto" data-v="1" aria-pressed="${!!(g.bonusAuto == null ? 1 : g.bonusAuto)}">実績から自動</button>
+          <button class="pill" data-act="bonusAuto" data-v="0" aria-pressed="${!(g.bonusAuto == null ? 1 : g.bonusAuto)}">手動で指定</button>
+        </div>
+        <div class="sub" style="margin-top:5px">${pl.mb
+      ? `直近28日の記録から <b>${fmt(pl.mb.diff)} kcal</b> と測定(トレ${pl.mb.tN}日 / オフ${pl.mb.rN}日)。記録が増えるほど実態に寄ります。`
+      : "トレ日3日・オフ日2日ぶん記録がたまると自動測定に切り替わります。それまでは上の設定値を使います。"}</div>
       </div>
       <div class="row" style="margin-top:11px;gap:8px">
         <button class="btn pri" data-act="tdeeFromLog">実績から維持カロリーを更新</button>
@@ -3174,7 +3356,7 @@ function vSet() {
         <div class="fld"><label for="sC">歩行ケイデンス (歩/分)</label><input id="sC" class="inp mono n" type="number" step="1" value="${st.cadence}" data-s="cadence"></div>
         <div class="fld"><label for="sSp">普段の歩行速度 (m/s)</label><input id="sSp" class="inp mono n" type="number" step="0.05" value="${st.stepSpeed}" data-s="stepSpeed"></div>
         <div class="fld"><label for="sRp">1レップの秒数</label><input id="sRp" class="inp mono n" type="number" step="0.5" min="1" value="${st.repSec}" data-s="repSec"></div>
-        <div class="fld"><label for="sRs">セット間の休憩 (秒)</label><input id="sRs" class="inp mono n" type="number" step="10" min="0" value="${st.restSec}" data-s="restSec"></div>
+        <div class="fld"><label for="sRs">セット間の休憩 (秒・基準)</label><input id="sRs" class="inp mono n" type="number" step="10" min="0" value="${st.restSec}" data-s="restSec"></div>
         <div class="fld"><label for="sT">食事誘発性熱産生 (摂取の10%)</label>
           <select id="sT" class="inp" data-s="tef">
             <option value="1"${st.tef ? " selected" : ""}>消費に含める</option>
@@ -3182,7 +3364,9 @@ function vSet() {
       </div>
       <div class="note" style="margin-top:10px">
         現在の推定 — 基礎代謝 <b>${fmt(bmrOf(w))} kcal</b> ×${r1(st.life)} = <b>${fmt(bmrOf(w) * st.life)} kcal</b>。
-        歩数・傾斜ウォーク・トレ・運動はここに<b>安静分を差し引いた純消費</b>として加算されるので、二重計上しません。
+        歩数・傾斜ウォーク・トレ・運動はここに<b>安静分を差し引いた純消費</b>として加算されるので、二重計上しません。<br>
+        セット間の休憩は種目ごとに倍率がかかります — 高重量の多関節(スクワット等)は<b>×2</b>、
+        通常の多関節(ベンチ等)は<b>×1.35</b>、単関節(レイズ等)は<b>×0.7</b>、自重の高強度は<b>×0.9</b>。
       </div>
     </div>
   </div>
@@ -3419,7 +3603,8 @@ function sheetLift(editIdx) {
       const w = weightAt(CUR);
       const dumb = this.sel.e === "ダンベル" || this.sel.e === "ケトルベル";
       const reps = this.sets.reduce((a, s) => a + num(s.rep), 0);
-      const estMin = (reps * S.set.repSec + this.sets.length * S.set.restSec) / 60;
+      const estRest = S.set.restSec * restFactor(this.sel.met);
+      const estMin = (reps * S.set.repSec + this.sets.length * estRest) / 60;
       const vol = this.sets.reduce((a, s) => a + num(s.kg) * num(s.rep), 0) * (this.ph ? 2 : 1);
       return `<div class="row" style="margin-bottom:10px">
           ${this.editIdx == null ? `<button class="btn sm gh" data-act="backLift">${IC.L}戻る</button>` : ""}
@@ -3454,7 +3639,7 @@ function sheetLift(editIdx) {
         <button class="btn sm add blk" data-act="addSet" style="margin-top:4px">${IC.plus}セットを足す</button>
         <div class="note" style="margin-top:11px">総ボリューム <b>${fmt(vol)} kg</b> · ${reps} レップ<br>
           所要 <b>${r0(estMin)} 分</b> の見込み → 推定消費 <b>${fmt(kcalMet(this.sel.met, w, estMin))} kcal</b>
-          <span style="color:var(--muted)">(1レップ${r1(S.set.repSec)}秒 + 休憩${r0(S.set.restSec)}秒で計算)</span></div>`;
+          <span style="color:var(--muted)">(1レップ${r1(S.set.repSec)}秒 + 休憩${r0(estRest)}秒で計算)</span></div>`;
     },
     foot() {
       if (!this.sel) return "";
@@ -3654,6 +3839,7 @@ function mergeIn(inc) {
   if (Array.isArray(inc.my)) for (const f of inc.my) if (!S.my.some(x => x.n === f.n)) S.my.push(f);
   if (Array.isArray(inc.sets)) for (const s of inc.sets) if (!S.sets.some(x => x.n === s.n)) S.sets.push(s);
   normalizeGoal();
+  DATA_STAMP++;
   save();
   return n;
 }
@@ -3782,6 +3968,7 @@ document.addEventListener("click", ev => {
     case "theme": S.set.theme = a.dataset.v; save(); render(); return;
     case "life": S.set.life = num(a.dataset.v); save(); render(); return;
     case "share": S.goal.actShare = num(a.dataset.v); save(); render(); return;
+    case "bonusAuto": S.goal.bonusAuto = a.dataset.v === "1" ? 1 : 0; save(); render(); return;
     case "toggleTd": edit(CUR, d => { d.td = !calc(CUR).isTrain ? 1 : 0; }); render(); return;
 
     case "addFood": sheetFood(a.dataset.slot); return;
@@ -3926,7 +4113,7 @@ document.addEventListener("click", ev => {
     }
     case "wipe": {
       if (!confirm("すべての記録と設定を削除します。取り消せません。よろしいですか?")) return;
-      localStorage.removeItem(LSK); S = DEF(); normalizeGoal(); save(); CUR = TODAY; render(); if (!S.set.setupDone) sheetSetup(); toast("削除しました"); return;
+      localStorage.removeItem(LSK); S = DEF(); normalizeGoal(); DATA_STAMP++; save(); CUR = TODAY; render(); if (!S.set.setupDone) sheetSetup(); toast("削除しました"); return;
     }
   }
 });
