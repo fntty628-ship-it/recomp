@@ -1908,7 +1908,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-26f";
+const APP_VER = "2026-08-26g";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2053,6 +2053,17 @@ function bmrOf(w, at) {
     return ((0.0481 * w + 0.0234 * h - 0.0138 * age - c) * 1000) / 4.186;
   }
   return 10 * w + 6.25 * h - 5 * age + (st.sex === "m" ? 5 : -161);
+}
+/* 速度は内部では m/s で持つ(ACSM式がその単位のため)。
+   画面での入出力は km/h に変換する。既存の記録もそのまま読める。 */
+const kmh2ms = k => num(k) / 3.6;
+const ms2kmh = m => num(m) * 3.6;
+/* km/h からキロあたりのペース("5:00" 形式)を作る */
+function paceStr(kmh) {
+  const k = num(kmh);
+  if (k <= 0) return "—";
+  const t = 60 / k, m = Math.floor(t), sec = Math.round((t - m) * 60);
+  return sec === 60 ? `${m + 1}:00` : `${m}:${P2(sec)}`;
 }
 /* ACSM: 速度は m/s、勾配は小数(0.10 = 10%) */
 const vo2Walk = (ms, g) => 0.1 * (ms * 60) + 1.8 * (ms * 60) * g + 3.5;
@@ -2439,7 +2450,7 @@ function vDay() {
           ${c.kcal > t.kcal + 60 ? IC.warn : IC.ok}摂取目標 ${fmt(t.kcal)} / ${signed(c.kcal - t.kcal)}</span>
         <span class="chip ${gapBurn > 120 ? "warn" : "good"}">${gapBurn > 120 ? IC.warn : IC.ok}消費目標 ${fmt(t.burn)} / ${signed(c.burn - t.burn)}</span>
       </div>
-      ${gapBurn > 60 ? `<div class="note">消費目標まで <b>${fmt(gapBurn)} kcal</b>。歩くなら約 <b>${needSteps.toLocaleString("ja-JP")}歩</b>、勾配10%・1.4m/sの傾斜ウォークなら約 <b>${r0(gapBurn / Math.max(0.1, kcalVo2(vo2Walk(1.4, 0.10), c.w, 1)))}分</b>。</div>` : ""}
+      ${gapBurn > 60 ? `<div class="note">消費目標まで <b>${fmt(gapBurn)} kcal</b>。歩くなら約 <b>${needSteps.toLocaleString("ja-JP")}歩</b>、勾配10%・5.0km/hの傾斜ウォークなら約 <b>${r0(gapBurn / Math.max(0.1, kcalVo2(vo2Walk(1.4, 0.10), c.w, 1)))}分</b>。</div>` : ""}
       <div class="sub">内訳 — 基礎代謝×生活係数 ${fmt(c.base)} / 歩数 ${fmt(c.stepK)} / 傾斜 ${fmt(c.incK)} / トレ ${fmt(c.liftK)} / 運動 ${fmt(c.actK)}${S.set.tef ? ` / 食事誘発 ${fmt(c.tef)}` : ""}</div>
     </div>
   </div>
@@ -2686,14 +2697,14 @@ function stepCard(d, c) {
       <div class="slot-h">傾斜ウォーク<span class="ln"></span>
         <button class="btn sm add" data-act="addInc">${IC.plus}追加</button></div>
       ${d.inc.length ? d.inc.map((e, i) => {
-    const r = incCalc(e, c.w);
+    const r = incCalc(e, c.w), kmh = r1(ms2kmh(e.sp));
     return `<div class="li">
-          <div class="body"><div class="t1">勾配 ${r1(e.g)}% · ${r1(e.sp)} m/s · ${r0(e.min)}分</div>
-            <div class="t2">${r1(num(e.sp) * 3.6)} km/h · ${r1(r.dist)} km · ${r1(r.met)} METs · 推定${r.steps.toLocaleString("ja-JP")}歩${r.run ? " · 走行式" : ""}</div></div>
+          <div class="body"><div class="t1">勾配 ${r1(e.g)}% · ${kmh} km/h · ${r0(e.min)}分</div>
+            <div class="t2">キロ${paceStr(kmh)} · ${r1(r.dist)} km · ${r1(r.met)} METs · 推定${r.steps.toLocaleString("ja-JP")}歩${r.run ? " · 走行式" : ""}</div></div>
           <div class="r"><div class="a">${fmt(r.kcal)}</div><div class="b">kcal</div></div>
           <button class="x" data-act="delInc" data-i="${i}" aria-label="削除">${IC.x}</button>
         </div>`;
-  }).join("") : '<div class="empty">テクノジムの表示値(勾配%・速度m/s)をそのまま入れてください</div>'}
+  }).join("") : '<div class="empty">テクノジムの表示値(勾配%・速度km/h)をそのまま入れてください</div>'}
     </div>
   </div>`;
 }
@@ -3354,7 +3365,7 @@ function vSet() {
         </div></div>
       <div class="grid2" style="margin-top:4px">
         <div class="fld"><label for="sC">歩行ケイデンス (歩/分)</label><input id="sC" class="inp mono n" type="number" step="1" value="${st.cadence}" data-s="cadence"></div>
-        <div class="fld"><label for="sSp">普段の歩行速度 (m/s)</label><input id="sSp" class="inp mono n" type="number" step="0.05" value="${st.stepSpeed}" data-s="stepSpeed"></div>
+        <div class="fld"><label for="sSp">普段の歩行速度 (km/h)</label><input id="sSp" class="inp mono n" type="number" step="0.1" min="1" max="12" value="${r1(ms2kmh(st.stepSpeed))}" data-s="stepSpeedKmh"></div>
         <div class="fld"><label for="sRp">1レップの秒数</label><input id="sRp" class="inp mono n" type="number" step="0.5" min="1" value="${st.repSec}" data-s="repSec"></div>
         <div class="fld"><label for="sRs">セット間の休憩 (秒・基準)</label><input id="sRs" class="inp mono n" type="number" step="10" min="0" value="${st.restSec}" data-s="restSec"></div>
         <div class="fld"><label for="sT">食事誘発性熱産生 (摂取の10%)</label>
@@ -3421,7 +3432,7 @@ function vSet() {
         運動のMETs … Compendium of Physical Activities (2011) を基準に${SPORTS.length}項目 / 筋トレ${LIFTS.length}種目<br>
         歩行・走行・傾斜 … ACSM代謝計算式 (歩行 VO₂=0.1S+1.8SG+3.5 / 走行 VO₂=0.2S+0.9SG+3.5、S=m/分)<br>
         体脂肪 … 1kg = 7,200 kcal で換算<br>
-        傾斜ウォークは速度2.0 m/s以上で走行式に自動で切り替わります。
+        傾斜ウォークは速度 7.2 km/h 以上で走行式に自動で切り替わります。速度は画面上は km/h、内部計算は m/s です。
       </div>
       <div class="note" style="margin-top:11px">
         バージョン <b class="mono">${APP_VER}</b> ／ 保存キー <span class="mono">${LSK}</span><br>
@@ -3684,19 +3695,19 @@ function sheetAct() {
 /* ------------------------------------------------------------ 傾斜ウォーク */
 function sheetInc() {
   openSheet({
-    title: "傾斜ウォークを追加", g: 10, sp: 1.4, min: 30,
+    title: "傾斜ウォークを追加", g: 10, sp: 6.0, min: 30,   /* sp は km/h */
     body() {
-      const w = weightAt(CUR), r = incCalc({ g: this.g, sp: this.sp, min: this.min }, w);
+      const w = weightAt(CUR), r = incCalc({ g: this.g, sp: kmh2ms(this.sp), min: this.min }, w);
       return `<div class="grid3">
           <div class="fld"><label for="ig">勾配 (%)</label><input id="ig" data-first class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" max="40" value="${this.g}" data-inc="g"></div>
-          <div class="fld"><label for="isp">速度 (m/s)</label><input id="isp" class="inp mono n" type="number" inputmode="decimal" step="0.05" min="0.3" max="6" value="${this.sp}" data-inc="sp"></div>
+          <div class="fld"><label for="isp">速度 (km/h)</label><input id="isp" class="inp mono n" type="number" inputmode="decimal" step="0.1" min="1" max="25" value="${this.sp}" data-inc="sp"></div>
           <div class="fld"><label for="im">時間 (分)</label><input id="im" class="inp mono n" type="number" inputmode="numeric" step="1" min="1" value="${this.min}" data-inc="min"></div>
         </div>
         <div class="note" style="margin-top:11px" data-incprev>
-          ${r1(this.sp * 3.6)} km/h · 距離 ${r1(r.dist)} km · ${r1(r.met)} METs · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>
+          キロ${paceStr(this.sp)} のペース · 距離 ${r1(r.dist)} km · ${r1(r.met)} METs · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>
           推定消費 <b>${fmt(r.kcal)} kcal</b>(${r.run ? "走行式" : "歩行式"}・安静分を除いた純消費)
         </div>
-        <div class="note" style="margin-top:9px">テクノジムのコンソールに出ている勾配と速度をそのまま入れてください。速度が 2.0 m/s 以上になると走行の式に切り替わります。</div>`;
+        <div class="note" style="margin-top:9px">テクノジムのコンソールに出ている勾配と速度をそのまま入れてください。速度が <b>7.2 km/h</b>(キロ8:20)以上になると走行の式に切り替わります。</div>`;
     },
     foot() { return `<button class="btn gh" data-act="closeSheet">やめる</button><button class="btn pri" data-act="saveInc">追加する</button>`; }
   });
@@ -4044,10 +4055,11 @@ document.addEventListener("click", ev => {
     case "saveInc": {
       const host = document.getElementById("sheetHost");
       const gv = num(host.querySelector('[data-inc="g"]').value);
-      const sp = num(host.querySelector('[data-inc="sp"]').value);
+      const spKmh = num(host.querySelector('[data-inc="sp"]').value);
       const mn = num(host.querySelector('[data-inc="min"]').value);
-      if (sp <= 0 || mn <= 0) { toast("速度と時間を入れてください"); return; }
-      edit(CUR, d => d.inc.push({ g: gv, sp, min: mn }));
+      if (spKmh <= 0 || mn <= 0) { toast("速度と時間を入れてください"); return; }
+      /* 保存は m/s。過去の記録と同じ形式にそろえる */
+      edit(CUR, d => d.inc.push({ g: gv, sp: kmh2ms(spKmh), min: mn }));
       closeSheet(); render(); toast("傾斜ウォークを追加"); return;
     }
     case "delInc": edit(CUR, d => d.inc.splice(i, 1)); render(); return;
@@ -4137,6 +4149,10 @@ document.addEventListener("change", ev => {
     else if (k === "note") edit(CUR, d => { d.note = el.value; });
     render(); return;
   }
+  if (el.dataset.s === "stepSpeedKmh") {
+    S.set.stepSpeed = kmh2ms(el.value);
+    save(); render(); return;
+  }
   if (el.dataset.s) {
     const k = el.dataset.s;
     S.set[k] = (k === "sex" || k === "birth" || k === "bmrF" || k === "theme") ? el.value : num(el.value);
@@ -4174,9 +4190,9 @@ document.addEventListener("input", ev => {
   }
   if (el.dataset.inc) {
     SH[el.dataset.inc] = num(el.value);
-    const w = weightAt(CUR), r = incCalc({ g: SH.g, sp: SH.sp, min: SH.min }, w);
+    const w = weightAt(CUR), r = incCalc({ g: SH.g, sp: kmh2ms(SH.sp), min: SH.min }, w);
     const p = document.querySelector("[data-incprev]");
-    if (p) p.innerHTML = `${r1(SH.sp * 3.6)} km/h · 距離 ${r1(r.dist)} km · ${r1(r.met)} METs · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>推定消費 <b>${fmt(r.kcal)} kcal</b>(${r.run ? "走行式" : "歩行式"}・安静分を除いた純消費)`;
+    if (p) p.innerHTML = `キロ${paceStr(SH.sp)} のペース · 距離 ${r1(r.dist)} km · ${r1(r.met)} METs · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>推定消費 <b>${fmt(r.kcal)} kcal</b>(${r.run ? "走行式" : "歩行式"}・安静分を除いた純消費)`;
   }
 });
 
