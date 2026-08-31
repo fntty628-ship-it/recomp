@@ -1919,7 +1919,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-28a";
+const APP_VER = "2026-08-28b";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -1939,7 +1939,7 @@ const DEF = () => ({
     on: 1, label: PROFILE.label, date: PROFILE.date,
     startW: PROFILE.startW, startDate: "", targetW: PROFILE.targetW,
     tdee: PROFILE.tdee, actShare: 0.30, pKg: 2.1, fKg: 0.6, cMinKg: 1.6,
-    trainDays: 4, carbHi: 1.20, peak: 1
+    trainDays: 4, trainBonus: 300, bonusAuto: 1, peak: 1
   },
   days: {}, my: [], sets: [], fav: { f: [], l: [], a: [] }
 });
@@ -2054,11 +2054,26 @@ function weightAt(k) {
   return S.goal.startW || 70;
 }
 
+/* 体脂肪率: その日の記録 → 直近の過去記録 → 最初の記録。無ければ 0 */
+function bfAt(k) {
+  const d = S.days[k];
+  if (d && d.bf) return d.bf;
+  const ks = Object.keys(S.days).filter(x => S.days[x].bf && x <= k).sort();
+  if (ks.length) return S.days[ks[ks.length - 1]].bf;
+  const fu = Object.keys(S.days).filter(x => S.days[x].bf).sort();
+  return fu.length ? S.days[fu[0]].bf : 0;
+}
+
 /* -------------------------------------------------------------- 消費モデル */
 function bmrOf(w, at) {
   const st = S.set;
   if (st.bmrManual > 0) return st.bmrManual;
   const age = ageAt(st.birth, at), h = st.height;
+  /* 除脂肪体重が分かるならこれが最も精度が高い。体脂肪率の記録が無ければ下の式に落ちる */
+  if (st.bmrF === "katch") {
+    const bf = bfAt(at || TODAY);
+    if (bf > 0 && bf < 60) return 370 + 21.6 * w * (1 - bf / 100);
+  }
   if (st.bmrF === "ganpule") {
     const c = st.sex === "m" ? 0.4235 : 0.9708;
     return ((0.0481 * w + 0.0234 * h - 0.0138 * age - c) * 1000) / 4.186;
@@ -2198,7 +2213,13 @@ function calc(k) {
   const stepMin = eff / S.set.cadence;
   const stepK = kcalVo2(vo2Walk(S.set.stepSpeed, 0), w, stepMin);
 
-  const tef = S.set.tef ? kcal * 0.1 : 0;
+  /* 食事誘発性熱産生は栄養素で大きく違う(P 約25% / C 約7.5% / F 約2%)。
+     一律10%だと高タンパクの食事で過小評価になるため、内訳から計算する。
+     直接入力などで内訳が不明なぶんは従来どおり10%で見る。 */
+  const macroKcal = p * 4 + f * 9 + cb * 4;
+  const tefMacro = p * 4 * 0.25 + cb * 4 * 0.075 + f * 9 * 0.02;
+  const unknownKcal = Math.max(0, kcal - macroKcal);
+  const tef = S.set.tef ? tefMacro + unknownKcal * 0.10 : 0;
   const burn = base + stepK + incK + liftK + actK + tef;
   return {
     w, bmr, base, kcal, p, f, cb, salt,
@@ -3418,7 +3439,8 @@ function vSet() {
         <div class="fld"><label for="sF">推定式</label>
           <select id="sF" class="inp" data-s="bmrF">
             <option value="mifflin"${st.bmrF === "mifflin" ? " selected" : ""}>Mifflin-St Jeor</option>
-            <option value="ganpule"${st.bmrF === "ganpule" ? " selected" : ""}>国立健康・栄養研究所の式</option></select></div>
+            <option value="ganpule"${st.bmrF === "ganpule" ? " selected" : ""}>国立健康・栄養研究所の式</option>
+            <option value="katch"${st.bmrF === "katch" ? " selected" : ""}>Katch-McArdle (体脂肪率を使う)</option></select></div>
         <div class="fld"><label for="sM">実測値で上書き (kcal)</label>
           <input id="sM" class="inp mono n" type="number" step="10" min="0" value="${st.bmrManual || ""}" placeholder="0 = 使わない" data-s="bmrManual"></div>
       </div>
@@ -3432,13 +3454,15 @@ function vSet() {
         <div class="fld"><label for="sSp">普段の歩行速度 (km/h)</label><input id="sSp" class="inp mono n" type="number" step="0.1" min="1" max="12" value="${r1(ms2kmh(st.stepSpeed))}" data-s="stepSpeedKmh"></div>
         <div class="fld"><label for="sRp">1レップの秒数</label><input id="sRp" class="inp mono n" type="number" step="0.5" min="1" value="${st.repSec}" data-s="repSec"></div>
         <div class="fld"><label for="sRs">セット間の休憩 (秒・基準)</label><input id="sRs" class="inp mono n" type="number" step="10" min="0" value="${st.restSec}" data-s="restSec"></div>
-        <div class="fld"><label for="sT">食事誘発性熱産生 (摂取の10%)</label>
+        <div class="fld"><label for="sT">食事誘発性熱産生</label>
           <select id="sT" class="inp" data-s="tef">
             <option value="1"${st.tef ? " selected" : ""}>消費に含める</option>
             <option value="0"${!st.tef ? " selected" : ""}>含めない</option></select></div>
       </div>
       <div class="note" style="margin-top:10px">
-        現在の推定 — 基礎代謝 <b>${fmt(bmrOf(w))} kcal</b> ×${r1(st.life)} = <b>${fmt(bmrOf(w) * st.life)} kcal</b>。
+        現在の推定 — 基礎代謝 <b>${fmt(bmrOf(w))} kcal</b> ×${r1(st.life)} = <b>${fmt(bmrOf(w) * st.life)} kcal</b>
+        <span style="color:var(--muted)">(${st.bmrF === "katch" ? (bfAt(TODAY) > 0 ? "除脂肪 " + r1(w * (1 - bfAt(TODAY) / 100)) + "kg から算出" : "体脂肪率の記録が無いので Mifflin で代用中") : st.bmrF === "ganpule" ? "身長・体重・年齢から" : "身長・体重・年齢から"})</span>。
+        食事誘発性熱産生は栄養素ごと(P 25% / C 7.5% / F 2%)に計算しています。
         歩数・傾斜ウォーク・トレ・運動はここに<b>安静分を差し引いた純消費</b>として加算されるので、二重計上しません。<br>
         セット間の休憩は種目ごとに倍率がかかります — 高重量の多関節(スクワット等)は<b>×2</b>、
         通常の多関節(ベンチ等)は<b>×1.35</b>、単関節(レイズ等)は<b>×0.7</b>、自重の高強度は<b>×0.9</b>。
