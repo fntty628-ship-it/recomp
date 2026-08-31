@@ -447,8 +447,15 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .pill{padding:7px 13px;border-radius:999px;border:1.5px solid var(--hair2);font-size:12.5px;font-weight:700;color:var(--ink2);background:var(--surf2);transition:transform .12s var(--ease)}
 .pill:active{transform:scale(.94)}
 .pill[aria-pressed="true"]{background:var(--s2);border-color:var(--s2);color:#fff}
-.setrow{display:grid;grid-template-columns:28px 1fr 1fr 36px;gap:8px;align-items:center;margin-bottom:7px}
-.setrow.bw{grid-template-columns:28px 1fr 36px}
+.setrow{display:grid;grid-template-columns:28px 1fr 1fr 34px 34px;gap:7px;align-items:center;margin-bottom:7px}
+.setrow.bw{grid-template-columns:28px 1fr 34px 34px}
+/* ドロップセット(前のセットから休まず続ける)の印 */
+.dp{height:32px;border-radius:9px;display:grid;place-items:center;font-size:15px;font-weight:700;
+  color:var(--muted);border:1.5px dashed var(--hair2);background:transparent;transition:all .14s}
+.dp.on{color:#fff;background:var(--s3);border-color:var(--s3);border-style:solid}
+.dp.off{border:none}
+.setrow.drop .idx{color:var(--s3)}
+.setrow.drop{margin-top:-3px}
 .setrow .idx{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center;font-weight:600}
 
 /* ---------- calendar ---------- */
@@ -1243,7 +1250,9 @@ const FOODS = [
 {n:"家系ラーメン(ライス付き)",c:"丼・麺・ご飯物",kcal:132,p:5.4,f:4.5,cb:17.3,s:0.8,u:[["1食",900]]},
 {n:"背脂系ラーメン",c:"丼・麺・ご飯物",kcal:120,p:5.0,f:5.5,cb:12.5,s:0.9,u:[["1杯",700]]},
 {n:"油そば",c:"丼・麺・ご飯物",kcal:230,p:8.5,f:9.5,cb:27.5,s:1.2,u:[["1杯",350]]},
-{n:"まぜそば(台湾風)",c:"丼・麺・ご飯物",kcal:215,p:9.0,f:9.0,cb:24.5,s:1.3,u:[["1杯",400]]},{n:"にぎり寿司(マグロ赤身)",c:"寿司",kcal:143,p:11.2,f:0.4,cb:23.4,s:0.5,u:[["1貫",30],["2貫",60]]},
+{n:"まぜそば(台湾風)",c:"丼・麺・ご飯物",kcal:215,p:9.0,f:9.0,cb:24.5,s:1.3,u:[["1杯",400]]},
+{n:"親子丼(鶏むね)",c:"丼・麺・ご飯物",kcal:125,p:8.5,f:1.5,cb:20.5,s:0.9,u:[["1杯",400]]},
+{n:"自作サラダチキン(低温調理)",c:"肉",kcal:115,p:24.0,f:1.5,cb:0.2,s:0.3,u:[["1枚分",250],["100g",100]]},{n:"にぎり寿司(マグロ赤身)",c:"寿司",kcal:143,p:11.2,f:0.4,cb:23.4,s:0.5,u:[["1貫",30],["2貫",60]]},
 {n:"にぎり寿司(マグロ中トロ)",c:"寿司",kcal:165,p:9.4,f:3.2,cb:23.4,s:0.6,u:[["1貫",30],["2貫",60]]},
 {n:"にぎり寿司(マグロ大トロ)",c:"寿司",kcal:225,p:9.5,f:11.2,cb:23.4,s:0.6,u:[["1貫",30],["2貫",60]]},
 {n:"にぎり寿司(サーモン)",c:"寿司",kcal:190,p:9.8,f:7.1,cb:22.7,s:0.5,u:[["1貫",31],["2貫",62]]},
@@ -1660,7 +1669,8 @@ const LIFTS = [
 {n:"ネックフレクション",m:"首",e:"その他",met:3.0,k:"neck flexion ネックフレクション 首"},
 {n:"ネックハーネス",m:"首",e:"その他",met:3.0,k:"neck harness ネックハーネス 首"},
 {n:"レスラーブリッジ",m:"首",e:"自重",met:3.5,k:"wrestler bridge レスラーブリッジ 首"},
-{n:"TRXプッシュアップ",m:"胸",e:"その他",met:8.0,k:"trx push up TRX プッシュアップ サスペンション"}
+{n:"TRXプッシュアップ",m:"胸",e:"その他",met:8.0,k:"trx push up TRX プッシュアップ サスペンション"},
+{n:"フロントラットプルダウン",m:"背中",e:"マシン",met:5.0,k:"front lat pulldown フロントラットプルダウン フロント ラットプルダウン ラットプル 前引き"}
 ];
 const SPORTS = [
 {n:"サッカー(試合)",c:"球技",met:10.0,amb:1,k:"soccer football サッカー フットボール"},
@@ -1909,7 +1919,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-26h";
+const APP_VER = "2026-08-28a";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2130,10 +2140,11 @@ function isBW(name) {
 function liftCalc(l, w) {
   const sets = l.sets || [];
   const reps = sets.reduce((a, s) => a + num(s.rep), 0);
-  /* 所要時間はレップ数から見積もる。28レップのセットと8レップのセットでは
-     かかる時間がまるで違うので、セット数だけで一律に換算すると高レップが過小評価になる。 */
+  /* ドロップセット(d=1)は前のセットから休まず続けるので、休憩を数えない。
+     同じ仕事量が短い時間に詰まるぶん、あとの密度計算で強度が上がる。 */
+  const rests = sets.reduce((a, s, i) => a + (i > 0 && s.d ? 0 : 1), 0);
   const rest = S.set.restSec * restFactor(l.met);
-  const min = num(l.min) || (reps * S.set.repSec + sets.length * rest) / 60;
+  const min = num(l.min) || (reps * S.set.repSec + rests * rest) / 60;
   /* ダンベル・ケトルベルは片手の重量で入力するのが普通なので、
      ボリュームは左右合計(×2)にする。ゴブレット等の片方だけ持つ種目は ph=0 にする。 */
   const mult = l.ph ? 2 : 1;
@@ -2142,7 +2153,9 @@ function liftCalc(l, w) {
   const bwLoad = frac * w;
   const load = s => (bwLoad + num(s.kg)) * mult;
   return {
-    min, reps, mult, rest, frac, bwLoad, kcal: kcalMet(l.met, w, min),
+    min, reps, rests, mult, rest, frac, bwLoad, met: l.met,
+    drops: sets.reduce((a, s, i) => a + (i > 0 && s.d ? 1 : 0), 0),
+    kcal: kcalMet(l.met, w, min),
     vol: sets.reduce((a, s) => a + load(s) * num(s.rep), 0),
     orm: sets.reduce((a, s) => Math.max(a, num(s.rep) ? load(s) * (1 + num(s.rep) / 30) : 0), 0)
   };
@@ -2156,12 +2169,26 @@ function calc(k) {
   const bmr = bmrOf(w, k), base = bmr * S.set.life;
   let incK = 0, incSteps = 0, incMin = 0, incDist = 0;
   for (const e of d.inc) { const r = incCalc(e, w); incK += r.kcal; incSteps += r.steps; incMin += num(e.min); incDist += r.dist; }
-  let liftK = 0, vol = 0, liftMin = 0, liftReps = 0;
+  /* --- トレーニングの消費 ---
+     種目ごとの METs(筋量の大きさ)を時間で重みづけしたものを土台にして、
+     「どれだけ密に詰めたか」で強度を上下させる。
+     密度 = 実際に挙げている時間 ÷ セッション全体の時間。
+     ドロップセットや短インターバルは密度が上がるので自動で強度が上がり、
+     長い休憩を取れば下がる。強度を手で選ばせない代わりの仕組み。 */
+  let vol = 0, liftReps = 0, liftSets = 0, liftDrops = 0;
   const lr = d.lifts.map(l => liftCalc(l, w));
   const estMin = lr.reduce((a, r) => a + r.min, 0);
-  /* 実測時間を入れた場合は見積もりをその比率で補正する(いちばん正確) */
-  const tScale = num(d.trainMin) > 0 && estMin > 0 ? num(d.trainMin) / estMin : 1;
-  for (const r of lr) { liftK += r.kcal * tScale; vol += r.vol; liftMin += r.min * tScale; liftReps += r.reps; }
+  for (const r of lr) { vol += r.vol; liftReps += r.reps; liftSets += (r.rests + r.drops); liftDrops += r.drops; }
+  const sessionMin = num(d.trainMin) > 0 ? num(d.trainMin) : estMin;
+  /* 土台: 種目 METs の時間加重平均(安静分を引いた純 METs) */
+  const baseNet = estMin > 0 ? lr.reduce((a, r) => a + (r.met - 1) * r.min, 0) / estMin : 0;
+  const workMin = (liftReps * S.set.repSec) / 60;          /* 挙げている時間 */
+  const density = sessionMin > 0 ? workMin / sessionMin : 0;
+  const DENS_REF = 0.12;                                    /* 標準的な密度 */
+  const densBonus = liftSets ? cl((density / DENS_REF - 1) * 1.2, -0.6, 2.2) : 0;
+  const effNet = Math.max(0.5, baseNet + densBonus);
+  const liftK = liftSets ? (effNet * 3.5 * w * sessionMin) / 200 : 0;
+  const liftMin = sessionMin;
   let actK = 0, aSteps = 0, actMin = 0;
   for (const a of d.acts) { actK += kcalMet(num(a.met), w, num(a.min)); aSteps += actSteps(a); actMin += num(a.min); }
 
@@ -2177,7 +2204,8 @@ function calc(k) {
     w, bmr, base, kcal, p, f, cb, salt,
     stepK, incK, liftK, actK, tef, burn, net: kcal - burn,
     rawSteps: num(d.steps), dup, eff, stepMin, incSteps, aSteps,
-    vol, liftMin, liftReps, actMin, incMin, incDist, trainMin: num(d.trainMin), estMin,
+    vol, liftMin, liftReps, liftSets, liftDrops, actMin, incMin, incDist,
+    trainMin: num(d.trainMin), estMin, liftMet: liftSets ? effNet + 1 : 0, density,
     isTrain: d.td == null ? d.lifts.length > 0 : !!d.td,
     logged: hasData(d)
   };
@@ -2574,6 +2602,7 @@ function vTrain() {
       <span class="chip"><b class="mono">${c.liftReps}</b> レップ</span>
       <span class="chip"><b class="mono">${r0(c.liftMin)}</b> 分</span>
       <span class="chip s2"><b class="mono">${fmt(c.liftK)}</b> kcal</span>
+      ${c.liftMet ? `<span class="chip">強度 <b class="mono">${r1(c.liftMet)}</b> METs</span>` : ""}
       <span class="chip ${c.isTrain ? "s1" : ""}">${c.isTrain ? "トレ日" : "オフ日"}</span>
       <button class="btn sm gh" data-act="toggleTd">切替</button>
     </div>
@@ -2585,9 +2614,10 @@ function vTrain() {
         <div class="inp mono n ro">${fmt(c.liftK)} kcal</div></div>
     </div>
     <div class="note" style="margin-top:10px">
-      消費は<b>METs × 時間 × 体重</b>で出しています。所要時間はレップ数から見積もっていますが、
-      <b>実際にかかった時間を入れるといちばん正確</b>になります(その時間に合わせて全体を補正します)。
-      重量を変えても消費が変わらないのは、この式に重量が入らないためです。挙げた重量は<b>総ボリューム</b>のほうで効いてきます。
+      消費は<b>METs × 時間 × 体重</b>。強度(METs)は<b>種目の種類と「どれだけ密に詰めたか」から自動で決まります</b>。
+      同じ70分でも、セット数とレップが多い日・ドロップセットで休まず続けた日は強度が上がります。
+      <b>実際にかかった時間を入れると精度が上がります</b>(休憩を含めた実働時間でOK)。
+      重量が消費に入らないのは式の性質上そうなるためで、挙げた重量は<b>総ボリューム</b>のほうで効いてきます。
     </div>
   </div></div>
   ${liftCard(d, c)}
@@ -2755,7 +2785,7 @@ function liftCard(d, c) {
     const r = liftCalc(l, c.w);
     return `<div class="li">
           <div class="body"><div class="t1">${esc(l.n)}</div>
-            <div class="t2">${(l.sets || []).map(s => l.bw ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`) : `${r1(s.kg)}×${r0(s.rep)}`).join("  ")} · ${(l.sets || []).length}セット${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
+            <div class="t2">${(l.sets || []).map((s, si) => (si > 0 && s.d ? "⤵" : "") + (l.bw ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`) : `${r1(s.kg)}×${r0(s.rep)}`)).join("  ")} · ${(l.sets || []).length}セット${r.drops ? ` · ドロップ${r.drops}` : ""}${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
           <div class="r"><div class="a">${fmt(r.vol)}</div><div class="b">kg</div></div>
           <button class="x" data-act="editLift" data-i="${i}" aria-label="${esc(l.n)}を編集">${IC.pen}</button>
           <button class="x" data-act="delLift" data-i="${i}" aria-label="${esc(l.n)}を削除">${IC.x}</button>
@@ -3612,7 +3642,7 @@ function lastLift(name) {
 }
 function lastSets(name) {
   const l = lastLift(name);
-  return l ? l.sets.map(s => ({ kg: s.kg, rep: s.rep })) : [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
+  return l ? l.sets.map(s => ({ kg: s.kg, rep: s.rep, d: s.d ? 1 : 0 })) : [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
 }
 /* 片手入力の初期値: ダンベル・ケトルベルは既定で片手、前回の記録があればそれを優先 */
 function defaultBW(name) {
@@ -3634,7 +3664,7 @@ function sheetLift(editIdx) {
   openSheet({
     title: ex ? "トレーニングを編集" : "トレーニングを追加", q: "", editIdx,
     sel: ex ? Object.assign({ n: ex.n, met: ex.met, m: "", e: "" }, LIFTS.find(x => x.n === ex.n) || {}) : null,
-    sets: ex ? ex.sets.map(s => ({ kg: s.kg, rep: s.rep })) : [],
+    sets: ex ? ex.sets.map(s => ({ kg: s.kg, rep: s.rep, d: s.d ? 1 : 0 })) : [],
     ph: ex ? (ex.ph ? 1 : 0) : 0,
     bw: ex ? (ex.bw ? 1 : 0) : 0,
     cands() {
@@ -3658,7 +3688,8 @@ function sheetLift(editIdx) {
       const dumb = !canBW && (this.sel.e === "ダンベル" || this.sel.e === "ケトルベル");
       const reps = this.sets.reduce((a, s) => a + num(s.rep), 0);
       const estRest = S.set.restSec * restFactor(this.sel.met);
-      const estMin = (reps * S.set.repSec + this.sets.length * estRest) / 60;
+      const restN = this.sets.reduce((a, s, i) => a + (i > 0 && s.d ? 0 : 1), 0);
+      const estMin = (reps * S.set.repSec + restN * estRest) / 60;
       const mul = this.ph ? 2 : 1;
       const vol = this.sets.reduce((a, s) => a + ((useBW ? bwLoad : 0) + num(s.kg)) * mul * num(s.rep), 0);
       return `<div class="row" style="margin-bottom:10px">
@@ -3692,17 +3723,21 @@ function sheetLift(editIdx) {
             <button class="btn sm pri" data-act="bulkAdd" style="flex:none">${IC.plus}</button>
           </div></div>
         <div class="setrow${useBW ? " bw" : ""}" style="color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.06em">
-          <span></span>${useBW ? "" : `<span>${canBW ? "加重 (+kg)" : "重量 (kg)"}${dumb && this.ph ? "/片手" : ""}</span>`}<span>回数</span><span></span></div>
-        ${this.sets.map((s, i) => `<div class="setrow${useBW ? " bw" : ""}">
+          <span></span>${useBW ? "" : `<span>${canBW ? "加重 (+kg)" : "重量 (kg)"}${dumb && this.ph ? "/片手" : ""}</span>`}<span>回数</span><span style="text-align:center">連続</span><span></span></div>
+        ${this.sets.map((s, i) => `<div class="setrow${useBW ? " bw" : ""}${i > 0 && s.d ? " drop" : ""}">
           <span class="idx">${i + 1}</span>
           ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" value="${s.kg}" data-set="${i}" data-fld="kg"${i === 0 ? " data-first" : ""}>`}
           <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" value="${s.rep}" data-set="${i}" data-fld="rep"${useBW && i === 0 ? " data-first" : ""}>
+          ${i === 0 ? '<span class="dp off" aria-hidden="true"></span>'
+        : `<button class="dp${s.d ? " on" : ""}" data-act="dropSet" data-i="${i}" aria-pressed="${!!s.d}" title="前のセットから休憩なし(ドロップセット)">⤵</button>`}
           <button class="x" data-act="delSet" data-i="${i}" aria-label="${i + 1}セット目を削除">${IC.x}</button>
         </div>`).join("")}
         <button class="btn sm add blk" data-act="addSet" style="margin-top:4px">${IC.plus}セットを足す</button>
-        <div class="note" style="margin-top:11px">総ボリューム <b>${fmt(vol)} kg</b> · ${reps} レップ<br>
-          所要 <b>${r0(estMin)} 分</b> の見込み → 推定消費 <b>${fmt(kcalMet(this.sel.met, w, estMin))} kcal</b>
-          <span style="color:var(--muted)">(1レップ${r1(S.set.repSec)}秒 + 休憩${r0(estRest)}秒で計算)</span></div>`;
+        <div class="sub" style="margin-top:7px">「連続」の <b>⤵</b> は<b>前のセットから休まず続けた</b>という印です。ドロップセットで使ってください。休憩を数えないぶん密度が上がり、強度が上がります。</div>
+        <div class="note" style="margin-top:11px">総ボリューム <b>${fmt(vol)} kg</b> · ${reps} レップ · ${this.sets.length}セット${this.sets.length - restN > 0 ? `(うちドロップ${this.sets.length - restN})` : ""}<br>
+          この種目だけで所要 <b>${r0(estMin)} 分</b> の見込み
+          <span style="color:var(--muted)">(1レップ${r1(S.set.repSec)}秒 + 休憩${r0(estRest)}秒)</span><br>
+          消費は<b>その日のトレ全体</b>の密度から決まるので、トレーニング画面で確認してください。</div>`;
     },
     foot() {
       if (!this.sel) return "";
@@ -4067,6 +4102,7 @@ document.addEventListener("click", ev => {
     case "favLift": { const n = SH.sel.n, x = S.fav.l.indexOf(n); x < 0 ? S.fav.l.unshift(n) : S.fav.l.splice(x, 1); save(); drawSheet(); return; }
     case "ph": pullSets(); SH.ph = a.dataset.v === "1" ? 1 : 0; drawSheet(); return;
     case "bwMode": pullSets(); SH.bw = a.dataset.v === "1" ? 1 : 0; drawSheet(); return;
+    case "dropSet": pullSets(); SH.sets[i].d = SH.sets[i].d ? 0 : 1; drawSheet(); return;
     case "bulkAdd": {
       pullSets();
       const host = document.getElementById("sheetHost");
@@ -4076,14 +4112,14 @@ document.addEventListener("click", ev => {
       /* 空の行しか無ければ置き換え、入力済みなら後ろに足す */
       const empty = SH.sets.every(s => !num(s.kg) && !num(s.rep));
       if (empty) SH.sets = [];
-      for (let i = 0; i < n; i++) SH.sets.push({ kg: kg || "", rep });
+      for (let i = 0; i < n; i++) SH.sets.push({ kg: kg || "", rep, d: 0 });
       drawSheet(); return;
     }
     case "addSet": pullSets(); SH.sets.push({ kg: SH.sets.length ? SH.sets[SH.sets.length - 1].kg : "", rep: "" }); drawSheet(); return;
     case "delSet": pullSets(); SH.sets.splice(i, 1); if (!SH.sets.length) SH.sets = [{ kg: "", rep: "" }]; drawSheet(); return;
     case "saveLift": {
       pullSets();
-      const sets = SH.sets.filter(s => num(s.kg) > 0 || num(s.rep) > 0).map(s => ({ kg: num(s.kg), rep: num(s.rep) }));
+      const sets = SH.sets.filter(s => num(s.kg) > 0 || num(s.rep) > 0).map(s => ({ kg: num(s.kg), rep: num(s.rep), d: s.d ? 1 : 0 }));
       if (!sets.length) { toast(SH.bw ? "回数を入れてください" : "重量と回数を入れてください"); return; }
       const rec = { n: SH.sel.n, met: SH.sel.met, sets, ph: SH.ph ? 1 : 0, bw: SH.bw ? 1 : 0 };
       edit(CUR, d => { if (SH.editIdx == null) d.lifts.push(rec); else d.lifts[SH.editIdx] = rec; if (d.td == null) d.td = 1; });
