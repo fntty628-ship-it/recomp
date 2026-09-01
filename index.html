@@ -458,6 +458,25 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .setrow.drop{margin-top:-3px}
 .setrow .idx{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center;font-weight:600}
 
+/* ---------- ドロップセット入力 ---------- */
+.dchain{border:1.5px solid var(--hair2);border-radius:var(--r2);padding:9px 10px 10px;margin-bottom:9px;
+  background:var(--surf2)}
+.dch-h{display:flex;align-items:center;gap:7px;margin-bottom:7px;min-width:0}
+.dch-h .t{font-size:12.5px;font-weight:700;flex:none}
+.dch-h .p{font-family:var(--fm);font-size:11px;color:var(--s3);font-weight:600;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dch-h .sp{flex:1}
+.drow{display:grid;grid-template-columns:26px 1fr 16px 1fr 32px;gap:6px;align-items:center;margin-bottom:6px}
+.drow.bw{grid-template-columns:26px 1fr 32px}
+.drow .idx{font-family:var(--fm);font-size:13px;color:var(--muted);text-align:center;font-weight:700}
+.drow.d .idx{color:var(--s3);font-size:15px}
+.drow .m{text-align:center;color:var(--muted);font-weight:700;font-size:13px}
+.setrow .x,.drow .x{height:32px;border-radius:9px;display:grid;place-items:center;color:var(--muted);
+  transition:background .14s,color .14s}
+.setrow .x:hover,.drow .x:hover,.dch-h .x:hover{background:var(--crit-soft);color:var(--crit)}
+.setrow .x svg,.drow .x svg,.dch-h .x svg{width:15px;height:15px}
+.dch-h .x{width:28px;height:28px;flex:none;border-radius:9px;display:grid;place-items:center;color:var(--muted)}
+
 /* ---------- calendar ---------- */
 .calhead{display:flex;align-items:center;gap:8px;margin-bottom:13px}
 .calhead .t{flex:1;text-align:center;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -530,6 +549,51 @@ table.dt td:first-child,table.dt th:first-child{text-align:left}
 .planrow .v{font-family:var(--fm);font-size:13.5px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 .menu-day{display:flex;flex-direction:column;gap:2px}
 
+/* ---------------------------------------------------------------- レビュー */
+.rvhead{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.rvgrade{flex:none;width:60px;height:60px;border-radius:50%;border:3px solid;
+  display:grid;place-items:center;font-size:29px;font-weight:800;line-height:1;font-family:var(--fm)}
+.rvtot{min-width:0}
+.rvtot .k{font-size:11px;color:var(--muted);font-weight:700}
+.rvtot .v{font-size:30px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.rvtot .v small{font-size:12px;color:var(--muted);font-weight:600}
+.rvtot .s{font-size:11.5px;color:var(--ink2);margin-top:2px}
+.radar{display:block;width:100%;max-width:336px;height:auto;margin:2px auto 8px}
+.radar .ring{fill:none;stroke:var(--grid);stroke-width:1}
+.radar .ring.o{stroke:var(--base);stroke-width:1.5}
+.radar .spoke{stroke:var(--grid);stroke-width:1}
+.radar .area{fill:var(--s2);fill-opacity:.20;stroke:var(--s2);stroke-width:2.5;stroke-linejoin:round}
+.radar .pt{fill:var(--s2);stroke:var(--surf);stroke-width:2}
+.radar .ax{fill:var(--ink2);font-size:12px;font-weight:700}
+.radar .axv{font-size:12.5px;font-weight:800;font-family:var(--fm)}
+.rvlist{display:grid;gap:13px;margin-top:6px}
+.rvrow{display:grid;gap:5px;min-width:0}
+.rvrow .hd{display:flex;align-items:baseline;gap:8px;min-width:0}
+.rvrow .hd b{flex:none;font-size:13.5px;font-weight:700}
+.rvrow .n{flex:1;min-width:0;text-align:right;font-size:11.5px;font-family:var(--fm);color:var(--ink2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rvrow .n em{color:var(--muted);font-style:normal}
+.rvrow .v{flex:none;width:31px;text-align:right;font-size:16px;font-weight:800;
+  font-family:var(--fm);font-variant-numeric:tabular-nums}
+.rvrow .s{font-size:10.5px;color:var(--muted);line-height:1.4}
+.rvbar{height:8px;border-radius:5px;background:var(--surf3);overflow:hidden}
+.rvbar i{display:block;height:100%;border-radius:5px;transition:width .3s var(--ease)}
+.rvmsgs{display:grid;gap:7px;margin-top:12px}
+.rvmsg{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.65;
+  padding:9px 11px;border-radius:var(--r3);background:var(--surf2);color:var(--ink2)}
+.rvmsg .i{flex:none;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;
+  font-size:10px;font-weight:800;margin-top:2px;color:#fff}
+.rvmsg.good{background:var(--good-soft)}
+.rvmsg.good .i{background:var(--good)}
+.rvmsg.warn{background:var(--warn-soft)}
+.rvmsg.warn .i{background:var(--warn);color:#3B2A00}
+.rvmsg.crit{background:var(--crit-soft)}
+.rvmsg.crit .i{background:var(--crit)}
+.fine{font-size:10.5px;line-height:1.6;color:var(--muted);margin:12px 0 0}
+@media(max-width:390px){
+  .rvrow .hd b{font-size:12.5px}
+  .rvrow .n{font-size:10.5px}
+}
 .note{background:var(--surf2);border-left:3px solid var(--s2);border-radius:0 var(--r3) var(--r3) 0;
   padding:11px 13px;font-size:12.5px;color:var(--ink2);line-height:1.7}
 .note b{color:var(--ink);font-weight:700}
@@ -1919,7 +1983,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-08-28b";
+const APP_VER = "2026-09-01b";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2150,6 +2214,22 @@ function bwFrac(name) {
 function isBW(name) {
   const ex = LIFTS.find(x => x.n === name);
   return !!(ex && ex.e === "自重" && bwFrac(name) > 0);
+}
+
+/* ドロップセットのまとまり(チェーン)と、保存形式のセット列を相互変換する。
+   d = 1(前のセットから休まず続けた)がそのままチェーンの区切りになっている。 */
+function setsToChains(sets) {
+  const out = [];
+  sets.forEach((s, i) => {
+    if (i === 0 || !s.d) out.push([]);
+    out[out.length - 1].push({ kg: s.kg, rep: s.rep });
+  });
+  return out;
+}
+function chainsToSets(chains) {
+  const out = [];
+  for (const c of chains) c.forEach((s, j) => out.push({ kg: s.kg, rep: s.rep, d: j > 0 ? 1 : 0 }));
+  return out;
 }
 
 function liftCalc(l, w) {
@@ -2795,6 +2875,21 @@ function stepCard(d, c) {
 }
 
 /* -------------------------------------------------------------- 筋トレ */
+/* セット列を読みやすい1行にする。ドロップセットは ⤵ でつなぎ、
+   同じ内容を続けてやったぶんは「×3」とまとめる。 */
+function setsSummary(l) {
+  const one = s => l.bw
+    ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`)
+    : `${r1(s.kg)}×${r0(s.rep)}`;
+  const out = [];
+  for (const c of setsToChains(l.sets || [])) {
+    const t = c.map((s, j) => (j ? "⤵" : "") + one(s)).join("");
+    const last = out[out.length - 1];
+    if (last && last.t === t) last.n++; else out.push({ t, n: 1 });
+  }
+  return out.map(o => o.t + (o.n > 1 ? ` ×${o.n}` : "")).join("  ");
+}
+
 function liftCard(d, c) {
   return `<div class="card">
     <div class="card-h"><span class="card-t">トレーニング</span><span class="sp"></span>
@@ -2806,7 +2901,7 @@ function liftCard(d, c) {
     const r = liftCalc(l, c.w);
     return `<div class="li">
           <div class="body"><div class="t1">${esc(l.n)}</div>
-            <div class="t2">${(l.sets || []).map((s, si) => (si > 0 && s.d ? "⤵" : "") + (l.bw ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`) : `${r1(s.kg)}×${r0(s.rep)}`)).join("  ")} · ${(l.sets || []).length}セット${r.drops ? ` · ドロップ${r.drops}` : ""}${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
+            <div class="t2">${setsSummary(l)} · ${(l.sets || []).length}セット${r.drops ? ` · ドロップ${r.drops}` : ""}${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
           <div class="r"><div class="a">${fmt(r.vol)}</div><div class="b">kg</div></div>
           <button class="x" data-act="editLift" data-i="${i}" aria-label="${esc(l.n)}を編集">${IC.pen}</button>
           <button class="x" data-act="delLift" data-i="${i}" aria-label="${esc(l.n)}を削除">${IC.x}</button>
@@ -3050,6 +3145,263 @@ function bindCharts() {
   });
 }
 
+/* ====================================================== レビュー(週・月の評価)
+   目標に対して 6 項目を 0-100 で採点する。基準は「その日の目標」なので、
+   トレ日/オフ日でカーボが変わるぶんも自動的に織り込まれる。            */
+const sc100 = v => cl(Math.round(v), 0, 100);
+/* 比率(実績÷目標)を点にする。lo..hi が満点の帯、loZ/hiZ で 0 点。
+   栄養素ごとに「足りない方が悪い」「多い方が悪い」を非対称に置ける。 */
+function rScore(r, lo, hi, loZ, hiZ) {
+  if (r == null || !isFinite(r)) return null;
+  if (r >= lo && r <= hi) return 100;
+  return r < lo ? sc100((100 * (r - loZ)) / (lo - loZ)) : sc100((100 * (hiZ - r)) / (hiZ - hi));
+}
+/* 最小二乗の傾き(1日あたり)。点が 2 つ未満なら null */
+function slope(pts) {
+  const m = pts.length;
+  if (m < 2) return null;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (const q of pts) { sx += q[0]; sy += q[1]; sxx += q[0] * q[0]; sxy += q[0] * q[1]; }
+  const den = m * sxx - sx * sx;
+  return den === 0 ? null : (m * sxy - sx * sy) / den;
+}
+const GRADES = [[88, "S", "var(--good)"], [76, "A", "var(--s2)"], [62, "B", "var(--s1)"],
+[46, "C", "var(--warn)"], [-1, "D", "var(--crit)"]];
+const gradeOf = v => GRADES.find(g => v >= g[0]);
+const scCol = v => (v == null ? "var(--base)" : v >= 78 ? "var(--good)" : v >= 58 ? "var(--warn)" : "var(--crit)");
+
+function review(keys, minN) {
+  const ks = keys.filter(k => k <= TODAY);
+  const rows = ks.map(k => ({ k, c: calc(k), t: dayTarget(k) })).filter(r => r.c.logged);
+  const n = rows.length;
+  const R = { n, span: ks.length, need: minN, ok: n >= minN, msgs: [] };
+  if (!R.ok) return R;
+
+  const A = { kcal: 0, p: 0, f: 0, cb: 0, burn: 0, net: 0, salt: 0, act: 0, steps: 0 };
+  const T = { kcal: 0, p: 0, f: 0, c: 0, burn: 0 };
+  let trainN = 0;
+  for (const r of rows) {
+    A.kcal += r.c.kcal; A.p += r.c.p; A.f += r.c.f; A.cb += r.c.cb;
+    A.burn += r.c.burn; A.net += r.c.net; A.salt += r.c.salt; A.steps += r.c.rawSteps;
+    A.act += r.c.stepK + r.c.incK + r.c.liftK + r.c.actK;
+    T.kcal += r.t.kcal; T.p += r.t.p; T.f += r.t.f; T.c += r.t.c; T.burn += r.t.burn;
+    if (r.c.isTrain) trainN++;
+  }
+  for (const o of [A, T]) for (const q in o) o[q] /= n;
+  R.A = A; R.T = T; R.trainN = trainN;
+  const w = weightAt(TODAY);
+
+  /* --- 体組成のトレンド(期間内の記録から最小二乗) --- */
+  const P = f => ks.map((k, i) => { const d = S.days[k]; const v = f(d); return v == null ? null : [i, v]; }).filter(Boolean);
+  const wp = P(d => (d && d.w) || null);
+  const cp = P(d => (d && d.w && d.bf) ? d.w : null);   /* 体脂肪率も揃っている日 */
+  const wkD = slope(wp), wkWk = wkD == null ? null : wkD * 7;
+  const lbmD = slope(P(d => (d && d.w && d.bf) ? d.w * (1 - d.bf / 100) : null));
+  const fatD = slope(P(d => (d && d.w && d.bf) ? (d.w * d.bf) / 100 : null));
+  const lbmWk = lbmD == null || cp.length < 3 ? null : lbmD * 7;
+  const fatWk = fatD == null || cp.length < 3 ? null : fatD * 7;
+  R.wp = wp; R.bfN = cp.length; R.wkWk = wkWk; R.lbmWk = lbmWk; R.fatWk = fatWk;
+
+  /* ---------------------------------------------------------------- 採点 */
+  /* P: 不足は筋量に直結するので厳しく、多い分は「もったいない」程度に留める */
+  const rP = T.p > 0 ? A.p / T.p : null;
+  const sP = rScore(rP, 0.92, 1.35, 0.45, 2.30);
+  /* F: 下も上も外せない。下限はホルモン、上限はカロリー密度の問題 */
+  const rF = T.f > 0 ? A.f / T.f : null;
+  const sF = rScore(rF, 0.85, 1.25, 0.40, 2.30);
+  /* C: 不足はトレ強度に響く。超過はカロリー側で既に減点されるので緩め */
+  const rC = T.c > 0 ? A.cb / T.c : null;
+  const sC = rScore(rC, 0.85, 1.18, 0.42, 1.95);
+  /* 収支: 目標の赤字との差を kcal で見る。浅くても深すぎても減点 */
+  const tgtNet = T.kcal - T.burn;
+  const dNet = A.net - tgtNet;
+  const tol = 110, zero = Math.max(520, Math.abs(tgtNet) * 0.72);
+  const sNet = Math.abs(dNet) <= tol ? 100 : sc100((100 * (zero - Math.abs(dNet))) / (zero - tol));
+  /* トレ・運動: 頻度と消費の両輪。消費の目標は plan() が出した目標消費 */
+  const freqT = cl(S.goal.trainDays, 1, 7) || 4;
+  const freqA = (trainN / n) * 7;
+  const sFreq = rScore(freqA / freqT, 0.88, 1.35, 0.15, 2.20);
+  const sBurn = rScore(T.burn > 0 ? A.burn / T.burn : null, 0.97, 1.18, 0.76, 1.55);
+  const sMove = sc100(sFreq * 0.45 + sBurn * 0.55);
+  /* 体重・体脂肪: 目標ペースに対する実測ペース。速すぎも減点(筋量が落ちる)。
+     体脂肪率があれば除脂肪量の維持でさらに評価する(無ければ体重だけ)。 */
+  const needWk = ((T.burn - T.kcal) * 7) / 7200;
+  let sRate = null, sLbm = null;
+  if (wkWk != null && wp.length >= 3) {
+    if (needWk > 0.05) sRate = rScore(-wkWk / needWk, 0.82, 1.18, -0.10, 2.20);
+    else sRate = sc100(100 - (Math.abs(wkWk) / 0.5) * 100);
+  }
+  if (lbmWk != null) {
+    const ls = Math.max(0, -lbmWk);
+    sLbm = ls <= 0.10 ? 100 : sc100((100 * (0.55 - ls)) / (0.55 - 0.10));
+  }
+  const sBody = sRate == null ? null : sLbm == null ? sRate : sc100(sRate * 0.55 + sLbm * 0.45);
+
+  R.items = [
+    { ax: "P", label: "タンパク質", score: sP, a: A.p, t: T.p, u: "g", sub: `体重1kgあたり ${r1(A.p / w)}g` },
+    { ax: "F", label: "脂質", score: sF, a: A.f, t: T.f, u: "g", sub: `体重1kgあたり ${r1(A.f / w)}g` },
+    { ax: "C", label: "炭水化物", score: sC, a: A.cb, t: T.c, u: "g", sub: `体重1kgあたり ${r1(A.cb / w)}g` },
+    { ax: "収支", label: "カロリー収支", score: sNet, a: A.net, t: tgtNet, u: "kcal", sgn: 1, sub: `摂取 ${fmt(A.kcal)} / 消費 ${fmt(A.burn)} kcal` },
+    { ax: "運動", label: "トレ・運動量", score: sMove, a: A.burn, t: T.burn, u: "kcal", sub: `トレ 週${r1(freqA)}回(目標${freqT}回) · 歩数 ${fmt(A.steps)}歩/日` },
+    { ax: "体組成", label: "体重・体脂肪", score: sBody, a: wkWk, t: -needWk, u: "kg/週", sgn: 1, dec: 2, sub: wp.length < 2 ? "体重の記録が足りません" : R.bfN >= 3 ? `体脂肪率も ${R.bfN} 日ぶん反映` : "体重のみで評価(体脂肪率の記録が少ない)" }
+  ];
+
+  /* 総合: 重みつき平均。未計測の項目は外して平均する */
+  const WT = [1.0, 0.8, 1.0, 1.3, 1.0, 1.3];
+  let sw = 0, sv = 0;
+  R.items.forEach((it, i) => { if (it.score != null) { sw += WT[i]; sv += WT[i] * it.score; } });
+  R.total = sw ? sc100(sv / sw) : 0;
+  const bad = R.items.filter(i => i.score != null && i.score < 58).map(i => i.label);
+  const weak = R.items.filter(i => i.score != null && i.score >= 58 && i.score < 78).map(i => i.label);
+  /* 平均だけ見ると「1項目だけ大きく外している」が隠れる。
+     赤の項目があるときは評価を1段下げて、badge と中身を食い違わせない。 */
+  let gi = GRADES.findIndex(g => R.total >= g[0]);
+  if (bad.length) gi = Math.min(GRADES.length - 1, gi + 1);
+  R.grade = GRADES[gi];
+
+  /* ---------------------------------------------------- 体への影響コメント */
+  const M = (lv, t) => R.msgs.push({ lv, t });
+  /* コメントの色はスコアと同じ基準で決める(バーが緑なのに赤字コメント、を防ぐ) */
+  const lv = v => (v >= 78 ? "good" : v >= 58 ? "warn" : "crit");
+  const gL = g => fmt(Math.abs(g));
+  /* --- P --- */
+  if (rP != null) {
+    const d = T.p - A.p;
+    if (sP < 55) M("crit", `タンパク質が目標の${r0(rP * 100)}%(平均 ${r0(A.p)}g / 目標 ${r0(T.p)}g)。赤字の中でここが欠けると、落ちる体重のうち筋肉の割合が増えます。1日あと ${gL(d)}g ― 鶏むね ${gL(d / 0.23)}g かプロテイン ${Math.max(1, Math.round(d / 22))} 杯ぶんです。`);
+    else if (sP < 80) M(lv(sP), `タンパク質がやや不足(目標の${r0(rP * 100)}%)。あと1日 ${gL(d)}g 積めば十分な水準に届きます。`);
+    else if (rP > 1.5) M("warn", `タンパク質は必要量をかなり超えています(目標の${r0(rP * 100)}%)。余ったぶんは主にエネルギーとして使われるだけなので、超過分を炭水化物へ回した方がトレの出力は上がります。`);
+    else M("good", `タンパク質は目標どおり(平均 ${r0(A.p)}g・体重1kgあたり ${r1(A.p / w)}g)。筋量の維持に必要な量は確保できています。`);
+  }
+  /* --- F --- */
+  if (rF != null) {
+    const d = A.f - T.f;
+    if (rF < 0.70) M("crit", `脂質が少なすぎます(平均 ${r0(A.f)}g / 目標 ${r0(T.f)}g)。脂質はテストステロンなどのホルモン合成の材料で、脂溶性ビタミン(A・D・E・K)の吸収にも要ります。体重×0.6g(${r0(w * 0.6)}g)は下回らないでください。`);
+    else if (rF < 0.85) M(lv(sF), `脂質がやや不足(平均 ${r0(A.f)}g)。削るならまず脂質、という順番は正しいのですが、行き過ぎるとホルモン面で不利になります。`);
+    else if (rF > 1.25) M(lv(sF), `脂質が目標を1日あたり ${gL(d)}g 超過(${fmt(d * 9)}kcal 相当)。脂質は 1g=9kcal と密度が高いので、同じカロリーでも食べられる量が減って満腹感が得にくく、炭水化物を圧迫します。揚げ物・脂身・ドレッシング・菓子のどれかが効いているはずです。`);
+    else M("good", `脂質は適正範囲(平均 ${r0(A.f)}g)。ホルモンとビタミン吸収に必要な量を確保しつつ、カロリーを取りすぎない位置にいます。`);
+  }
+  /* --- C --- */
+  if (rC != null) {
+    const d = A.cb - T.c;
+    if (rC < 0.72) M("crit", `炭水化物が目標の${r0(rC * 100)}%(平均 ${r0(A.cb)}g / 目標 ${r0(T.c)}g)。筋グリコーゲンが枯れると挙上重量とセット間の回復が落ち、「強度を落とさずリコンプ」という前提そのものが崩れます。減らすならまず脂質から。`);
+    else if (rC < 0.85) M(lv(sC), `炭水化物がやや不足(目標の${r0(rC * 100)}%)。トレ前後にあと ${gL(d)}g(白米なら ${gL(d / 0.37)}g)寄せると、後半のセットの伸びが変わります。`);
+    else if (rC > 1.18) M(lv(sC), `炭水化物が目標を1日 ${gL(d)}g 超過。カロリー収支が合っているなら大きな問題ではありませんが、収支が崩れているならここを削るのが一番ラクです。`);
+    else M("good", `炭水化物は目標どおり(平均 ${r0(A.cb)}g)。トレ強度を支えるぶんは確保できています。`);
+  }
+  /* --- 収支 --- */
+  {
+    const kgGap = (dNet * Math.max(1, diffD(TODAY, S.goal.date))) / 7200;
+    const nums = `(実績 ${signed(A.net)} / 目標 ${signed(tgtNet)})`;
+    if (dNet > tol) M(lv(sNet), sNet >= 78
+      ? `カロリーの赤字が目標より1日 ${fmt(dNet)}kcal ぶん浅めです${nums}。この程度なら誤差の範囲ですが、続くと ${S.goal.date ? S.goal.date.slice(5).replace("-", "/") + " 時点で" : "最終的に"}約 ${r1(kgGap)}kg のズレになります。`
+      : `カロリーの赤字が目標より1日あたり ${fmt(dNet)}kcal 浅いです${nums}。このペースのままだと ${S.goal.date ? S.goal.date.slice(5).replace("-", "/") + " 時点で" : "最終的に"}約 ${r1(kgGap)}kg 足りない計算になります。`);
+    else if (dNet < -tol) M(lv(sNet), sNet >= 78
+      ? `赤字が目標より1日 ${fmt(-dNet)}kcal ぶん深めです${nums}。この程度なら問題ありませんが、これ以上深くすると落ちるうちの筋肉の比率が上がるので、削る方向には振らないでください。`
+      : `赤字が目標より1日あたり ${fmt(-dNet)}kcal 深すぎます${nums}。体重は落ちますが、落ちるうちの筋肉の比率が上がり、代謝も下がってトレの出力が落ちます。リコンプでは逆効果になりやすいところです。`);
+    else M("good", `カロリー収支は狙いどおり(1日平均 ${signed(A.net)} / 目標 ${signed(tgtNet)})。減量ペースを作っているのはここなので、この位置を維持できていれば計算どおり進みます。`);
+  }
+  /* --- トレ・運動 --- */
+  {
+    const dB = T.burn - A.burn;
+    if (sFreq < 60) M(lv(sFreq), `トレ頻度が週 ${r1(freqA)} 回(目標 ${freqT} 回)。減量中の筋量維持は「刺激の頻度」で決まる部分が大きいので、1回を長くするより回数を戻す方が効きます。`);
+    if (dB > 120) {
+      /* 埋め方は歩数と傾斜ウォークの両方で出す。歩数だけだと非現実的な数字になりやすい */
+      const addStep = (dB / kcalVo2(vo2Walk(S.set.stepSpeed, 0), w, 60 / S.set.cadence)) * 60;
+      const incMin = dB / Math.max(1, kcalVo2(vo2Walk(1.53, 0.10), w, 1));
+      M(lv(sBurn), `消費が目標より1日 ${fmt(dB)}kcal 少なめ。歩数を1日 ${fmt(addStep)} 歩(約 ${r0(addStep / S.set.cadence)} 分の歩行)増やすか、傾斜ウォーク(勾配10%・5.5km/h)を ${r0(incMin)} 分足すと埋まります。食事を削らずに赤字を作れるぶんです。`);
+    }
+    else if (sMove >= 78) M("good", `トレ・運動量は十分(平均消費 ${fmt(A.burn)}kcal / 目標 ${fmt(T.burn)}kcal・トレ週 ${r1(freqA)} 回)。運動側で赤字を作れているので、食事を無理に削らずに済んでいます。`);
+  }
+  /* --- 体重・体脂肪 --- */
+  if (wp.length < 2) {
+    M("warn", `体重の記録が ${wp.length} 日ぶんしかありません。週2〜3回でいいので、朝イチ・トイレ後・同じ服装で乗ってください。体重が入らないと維持カロリーの補正もできません。`);
+  } else if (wkWk != null) {
+    const lost = -wkWk;
+    if (needWk > 0.05 && lost < needWk * 0.5) M("warn", `体重の変化が週 ${r1(wkWk)}kg。目標ペースは週 ${r1(-needWk)}kg なので追いついていません。記録上の収支が合っているのにここが動かない場合は、維持カロリーの見積り(推定なので ±10% の誤差があります)か記録漏れのどちらかです。目標ページの「実績から維持カロリーを更新」で補正してください。`);
+    else if (lost > needWk * 1.35 || lost > w * 0.012) M("warn", `体重の落ち方が週 ${r1(lost)}kg と速すぎます(目標 週 ${r1(needWk)}kg・体重の1.2%上限は ${r1(w * 0.012)}kg)。この速度は筋量が落ちる側の領域です。ただし最初の1週間は水分とグリコーゲンで大きく動くので、2週目以降の傾きで判断してください。`);
+    else M("good", `体重は週 ${r1(wkWk)}kg のペース(目標 週 ${r1(-needWk)}kg)。計画どおりに進んでいます。`);
+    if (lbmWk != null) {
+      if (lbmWk >= -0.10) M("good", `体脂肪率も一緒に下がっていて、除脂肪量はほぼ維持(週 ${r1(lbmWk)}kg)・脂肪だけが週 ${r1(fatWk)}kg 減っています。狙いどおりのリコンプです。`);
+      else M("warn", `除脂肪量が週 ${r1(lbmWk)}kg 減っています(脂肪は週 ${r1(fatWk)}kg)。落ちているぶんの約 ${r0(cl((-lbmWk) / Math.max(0.01, (-lbmWk) + Math.max(0, -fatWk)), 0, 1) * 100)}% が脂肪以外です。赤字を浅くする・タンパク質を増やす・トレ強度を戻す、のどれかで対処してください。なお家庭用体組成計の体脂肪率は体水分に振られるので、短い期間の数字は参考程度に見てください。`);
+    }
+  }
+  /* --- 補足: 食塩 --- */
+  if (A.salt > 9) M("warn", `食塩が1日平均 ${r1(A.salt)}g(目標量は男性 7.5g 未満)。血圧のほかに、直前の見た目という意味でも水分の抱え込みにつながります。`);
+
+  /* --- 総評 --- */
+  if (bad.length && R.total >= 62) R.sum = `全体としては悪くありません(${R.total}点)が、${bad.join("・")} だけがはっきり目標から外れています。他は良いので、ここ1点に絞って直してください。`;
+  else if (R.total >= 88 && !weak.length) R.sum = "文句なしです。6項目すべてが目標の範囲に収まっています。このまま同じことを続けてください ― 変えるべきところがありません。";
+  else if (R.total >= 76) R.sum = `よくできています(${R.total}点)。${weak.length ? weak.join("・") + " だけ少し伸びしろがありますが" : "全体として崩れがなく"}、方向は正しいので大きく変える必要はありません。`;
+  else if (R.total >= 62) R.sum = `おおむね順調です。${weak.length ? weak.join("・") + " を整えれば" : "細かい調整で"}一段上がります。全部を同時に直そうとせず、1つずつで大丈夫です。`;
+  else if (R.total >= 46) R.sum = `目標からのズレが出ています。${bad.length ? bad.join("・") + " が足を引っ張っています。" : ""}直す順番は 収支 → タンパク質 → 炭水化物 で、脂質と運動量は後回しで構いません。`;
+  else R.sum = `いまのままだと目標には届きません。${bad.length ? "特に " + bad.join("・") + "。" : ""}ただし記録は ${n} 日ぶんなので、まずは毎日残すところからで大丈夫です。記録が揃えば、どこを直せばいいかはこの画面が教えてくれます。`;
+  return R;
+}
+
+/* -------------------------------------------------------------- レーダー */
+function radarSvg(items) {
+  const N = items.length, CX = 168, CY = 140, R = 92;
+  const ang = i => -Math.PI / 2 + (Math.PI * 2 * i) / N;
+  const px = (i, r) => (CX + Math.cos(ang(i)) * R * r).toFixed(1);
+  const py = (i, r) => (CY + Math.sin(ang(i)) * R * r).toFixed(1);
+  const poly = r => items.map((_, i) => `${px(i, r)},${py(i, r)}`).join(" ");
+  const rings = [0.25, 0.5, 0.75, 1].map(r =>
+    `<polygon class="ring${r === 1 ? " o" : ""}" points="${poly(r)}"/>`).join("");
+  const spokes = items.map((_, i) => `<line class="spoke" x1="${CX}" y1="${CY}" x2="${px(i, 1)}" y2="${py(i, 1)}"/>`).join("");
+  const vr = it => (it.score == null ? 0 : it.score / 100);
+  const area = `<polygon class="area" points="${items.map((it, i) => `${px(i, vr(it))},${py(i, vr(it))}`).join(" ")}"/>`;
+  const dots = items.map((it, i) => it.score == null ? "" :
+    `<circle class="pt" cx="${px(i, vr(it))}" cy="${py(i, vr(it))}" r="3.4"/>`).join("");
+  const labs = items.map((it, i) => {
+    const c = Math.cos(ang(i)), s = Math.sin(ang(i));
+    const an = Math.abs(c) < 0.25 ? "middle" : c > 0 ? "start" : "end";
+    const x = (CX + c * (R + 16)).toFixed(1);
+    const y = CY + s * (R + 16) + (s > 0.7 ? 14 : s < -0.7 ? -8 : 2);
+    return `<text class="ax" x="${x}" y="${y.toFixed(1)}" text-anchor="${an}">${esc(it.ax)}</text>
+      <text class="axv" x="${x}" y="${(y + 13).toFixed(1)}" text-anchor="${an}" fill="${scCol(it.score)}">${it.score == null ? "—" : it.score}</text>`;
+  }).join("");
+  return `<svg class="radar" viewBox="0 0 336 300" role="img"
+    aria-label="6項目の評価: ${items.map(i => i.ax + " " + (i.score == null ? "未計測" : i.score + "点")).join("、")}">
+    ${rings}${spokes}${area}${dots}${labs}</svg>`;
+}
+
+/* ------------------------------------------------------------ レビューカード */
+function reviewCard(R, spanLabel) {
+  if (!R.ok) return `<div class="card"><div class="card-h"><span class="card-t">${esc(spanLabel)}のレビュー</span></div>
+    <div class="card-b"><div class="note w">この期間の記録が <b>${R.n}日</b> ぶんしかありません。評価には ${R.need} 日以上必要です。まずは体重と食事を残していってください(週の前半はどうしても足りないので、← で前の期間を見てください)。</div></div></div>`;
+  const g = R.grade;
+  const fv = (v, it) => {
+    if (v == null) return "—";
+    if (it.dec) return sgn(v) + Math.abs(v).toFixed(it.dec);
+    return it.sgn ? signed(v) : fmt(v);
+  };
+  const row = it => `<div class="rvrow">
+      <div class="hd"><b>${esc(it.label)}</b>
+        <span class="n">${fv(it.a, it)}${it.u ? " " + it.u : ""} <em>/ 目標 ${fv(it.t, it)}</em></span>
+        <span class="v" style="color:${scCol(it.score)}">${it.score == null ? "—" : it.score}</span></div>
+      <div class="rvbar"><i style="width:${it.score == null ? 0 : it.score}%;background:${scCol(it.score)}"></i></div>
+      <div class="s">${esc(it.sub)}</div>
+    </div>`;
+  const ICO = { good: "◎", warn: "！", crit: "！" };
+  return `<div class="card pop2">
+    <div class="card-h"><span class="card-t">${esc(spanLabel)}のレビュー</span><span class="sp"></span>
+      <span class="chip">${R.n} / ${R.span} 日を記録</span></div>
+    <div class="card-b">
+      <div class="rvhead">
+        <div class="rvgrade" style="border-color:${g[2]};color:${g[2]}">${g[1]}</div>
+        <div class="rvtot"><div class="k">総合スコア</div>
+          <div class="v">${R.total}<small> / 100</small></div>
+          <div class="s">目標(${esc(S.goal.label || "ゴール")})に対する達成度</div></div>
+      </div>
+      ${radarSvg(R.items)}
+      <div class="rvlist">${R.items.map(row).join("")}</div>
+      <div class="note ${R.total >= 76 ? "" : R.total >= 62 ? "a" : "w"}" style="margin-top:14px"><b>総評</b> ― ${esc(R.sum)}</div>
+      <div class="rvmsgs">${R.msgs.map(m => `<div class="rvmsg ${m.lv}"><span class="i">${ICO[m.lv]}</span><span>${esc(m.t)}</span></div>`).join("")}</div>
+      <p class="fine">評価はすべて目標ページの設定に対する相対評価です。トレ日/オフ日で目標が変わるぶんは自動で織り込んでいます。体重・体脂肪の傾きは期間内の記録から最小二乗で出しているので、記録日が少ないほど振れます。</p>
+    </div>
+  </div>`;
+}
+
 /* ============================================================ グラフビュー */
 function vChart() {
   const span = CH.span;
@@ -3103,6 +3455,8 @@ function vChart() {
       <div class="b"><div class="k">累積収支</div><div class="v" style="color:${sum.k - sum.b > 0 ? "var(--crit)" : "var(--s2)"}">${sum.n ? signed(sum.k - sum.b) : "—"}<small> kcal</small></div></div>
     </div>
   </div></div>
+
+  ${reviewCard(review(keys, span === "week" ? 3 : 8), span === "week" ? "この週" : "この月")}
 
   ${chartCard({
     id: "kcal", title: "カロリー(摂取・消費)", type: "group", unit: " kcal",
@@ -3689,6 +4043,7 @@ function sheetLift(editIdx) {
     title: ex ? "トレーニングを編集" : "トレーニングを追加", q: "", editIdx,
     sel: ex ? Object.assign({ n: ex.n, met: ex.met, m: "", e: "" }, LIFTS.find(x => x.n === ex.n) || {}) : null,
     sets: ex ? ex.sets.map(s => ({ kg: s.kg, rep: s.rep, d: s.d ? 1 : 0 })) : [],
+    mode: null, chains: [],
     ph: ex ? (ex.ph ? 1 : 0) : 0,
     bw: ex ? (ex.bw ? 1 : 0) : 0,
     cands() {
@@ -3705,6 +4060,7 @@ function sheetLift(editIdx) {
           <div class="cands">${this.cands()}</div>`;
       }
       if (!this.sets.length) { this.sets = lastSets(this.sel.n); this.ph = defaultPH(this.sel.n); this.bw = defaultBW(this.sel.n); }
+      if (this.mode === "drop") return this.dropBody();
       const w = weightAt(CUR);
       const canBW = isBW(this.sel.n);          /* 自重/加重を選べる種目か */
       const useBW = canBW && this.bw;
@@ -3756,19 +4112,77 @@ function sheetLift(editIdx) {
         : `<button class="dp${s.d ? " on" : ""}" data-act="dropSet" data-i="${i}" aria-pressed="${!!s.d}" title="前のセットから休憩なし(ドロップセット)">⤵</button>`}
           <button class="x" data-act="delSet" data-i="${i}" aria-label="${i + 1}セット目を削除">${IC.x}</button>
         </div>`).join("")}
-        <button class="btn sm add blk" data-act="addSet" style="margin-top:4px">${IC.plus}セットを足す</button>
-        <div class="sub" style="margin-top:7px">「連続」の <b>⤵</b> は<b>前のセットから休まず続けた</b>という印です。ドロップセットで使ってください。休憩を数えないぶん密度が上がり、強度が上がります。</div>
+        <div class="row" style="gap:7px;margin-top:4px">
+          <button class="btn sm add" data-act="addSet" style="flex:1">${IC.plus}セットを足す</button>
+          <button class="btn sm" data-act="dropOpen" style="flex:1;color:var(--s3);border-color:var(--s3)">⤵ ドロップセット入力</button>
+        </div>
+        <div class="sub" style="margin-top:7px">「連続」の <b>⤵</b> は<b>前のセットから休まず続けた</b>という印です。休憩を数えないぶん密度が上がり、強度が上がります。<br>ドロップセットは <b>ドロップセット入力</b> から、やった順にまとめて入れられます(複製もできます)。</div>
         <div class="note" style="margin-top:11px">総ボリューム <b>${fmt(vol)} kg</b> · ${reps} レップ · ${this.sets.length}セット${this.sets.length - restN > 0 ? `(うちドロップ${this.sets.length - restN})` : ""}<br>
           この種目だけで所要 <b>${r0(estMin)} 分</b> の見込み
           <span style="color:var(--muted)">(1レップ${r1(S.set.repSec)}秒 + 休憩${r0(estRest)}秒)</span><br>
           消費は<b>その日のトレ全体</b>の密度から決まるので、トレーニング画面で確認してください。</div>`;
     },
+    /* ------------------------------------------------ ドロップセット専用ページ
+       やった順に「段」を積んでいく。段と段の間は休憩なしとして計算する。
+       同じ内容を繰り返したときのために、セットまるごとの複製を用意する。 */
+    dropBody() {
+      const w = weightAt(CUR);
+      const canBW = isBW(this.sel.n), useBW = canBW && this.bw;
+      const bwLoad = bwFrac(this.sel.n) * w, mul = this.ph ? 2 : 1;
+      let reps = 0, vol = 0, steps = 0;
+      for (const c of this.chains) for (const s of c) {
+        reps += num(s.rep); steps++;
+        vol += ((useBW ? bwLoad : 0) + num(s.kg)) * mul * num(s.rep);
+      }
+      const estRest = S.set.restSec * restFactor(this.sel.met);
+      const estMin = (reps * S.set.repSec + this.chains.length * estRest) / 60;
+      const pv = c => c.map(s => useBW
+        ? (num(s.rep) || "?") + "回"
+        : (num(s.kg) || "?") + "×" + (num(s.rep) || "?")).join(" → ");
+      return `<div class="row" style="margin-bottom:10px">
+          <button class="btn sm gh" data-act="dropCancel">${IC.L}戻る</button>
+          <span class="sp" style="flex:1"></span>
+        </div>
+        <div style="font-size:16px;font-weight:600">${esc(this.sel.n)}<span style="color:var(--s3)"> · ドロップセット</span></div>
+        <div class="sub" style="margin:5px 0 13px">やった順に上から入れてください。<b style="color:var(--s3)">⤵ の段は休憩なし</b>で計算します。同じ内容を続けてやったときは<b>複製</b>が早いです。</div>
+        ${this.chains.map((c, ci) => `<div class="dchain">
+          <div class="dch-h">
+            <span class="t">${ci + 1}セット目</span>
+            <span class="p">${esc(pv(c))}</span>
+            <span class="sp"></span>
+            <button class="btn sm gh" data-act="dropDup" data-c="${ci}">${IC.copy}複製</button>
+            <button class="x" data-act="dropDelChain" data-c="${ci}" aria-label="${ci + 1}セット目を削除">${IC.x}</button>
+          </div>
+          ${c.map((s, di) => `<div class="drow${useBW ? " bw" : ""}${di ? " d" : ""}">
+            <span class="idx">${di ? "⤵" : "1"}</span>
+            ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${canBW ? "+kg" : "kg"}" value="${s.kg}" data-ch="${ci}" data-dr="${di}" data-fld="kg"${ci === 0 && di === 0 ? " data-first" : ""}>
+            <span class="m">×</span>`}
+            <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" placeholder="回" value="${s.rep}" data-ch="${ci}" data-dr="${di}" data-fld="rep"${useBW && ci === 0 && di === 0 ? " data-first" : ""}>
+            <button class="x" data-act="dropDelStep" data-c="${ci}" data-d="${di}" aria-label="この段を削除">${IC.x}</button>
+          </div>`).join("")}
+          <button class="btn sm add blk" data-act="dropAddStep" data-c="${ci}" style="margin-top:3px">${IC.plus}段を足す</button>
+        </div>`).join("")}
+        <button class="btn sm add blk" data-act="dropAddChain">${IC.plus}ドロップセットをもう1つ</button>
+        <div class="note" style="margin-top:12px">${this.chains.length}セット · 全${steps}段 · ${reps} レップ · 総ボリューム <b>${fmt(vol)} kg</b><br>
+          所要 <b>${r0(estMin)} 分</b> の見込み
+          <span style="color:var(--muted)">(段の間は休憩0秒、セット間だけ${r0(estRest)}秒で計算)</span></div>`;
+    },
     foot() {
       if (!this.sel) return "";
+      if (this.mode === "drop") return `<button class="btn gh" data-act="dropCancel">戻る</button><button class="btn pri" data-act="dropApply">セットに反映</button>`;
       return `<button class="btn gh" data-act="closeSheet">やめる</button><button class="btn pri" data-act="saveLift">${this.editIdx == null ? "追加する" : "保存する"}</button>`;
     }
   });
 }
+/* ドロップセット画面の入力を状態へ吸い上げる(再描画で消えないように) */
+function pullChains() {
+  document.querySelectorAll("[data-ch]").forEach(el => {
+    const c = SH.chains[el.dataset.ch * 1];
+    const s = c && c[el.dataset.dr * 1];
+    if (s) s[el.dataset.fld] = el.value;
+  });
+}
+const EMPTY_CHAIN = () => [{ kg: "", rep: "" }, { kg: "", rep: "" }];
 
 /* ---------------------------------------------------------------- 運動シート */
 function sheetAct() {
@@ -4141,6 +4555,48 @@ document.addEventListener("click", ev => {
     }
     case "addSet": pullSets(); SH.sets.push({ kg: SH.sets.length ? SH.sets[SH.sets.length - 1].kg : "", rep: "" }); drawSheet(); return;
     case "delSet": pullSets(); SH.sets.splice(i, 1); if (!SH.sets.length) SH.sets = [{ kg: "", rep: "" }]; drawSheet(); return;
+
+    /* ------------------------------------------------ ドロップセット専用ページ */
+    case "dropOpen": {
+      pullSets();
+      SH.chains = setsToChains(SH.sets.filter(s => num(s.kg) > 0 || num(s.rep) > 0));
+      if (!SH.chains.length) SH.chains = [EMPTY_CHAIN()];
+      SH.mode = "drop"; drawSheet(); return;
+    }
+    case "dropCancel": SH.mode = null; drawSheet(); return;
+    case "dropApply": {
+      pullChains();
+      const ch = SH.chains.map(c => c.filter(s => num(s.kg) > 0 || num(s.rep) > 0)).filter(c => c.length);
+      if (!ch.length) { toast(SH.bw ? "回数を入れてください" : "重量と回数を入れてください"); return; }
+      SH.chains = ch; SH.sets = chainsToSets(ch); SH.mode = null; drawSheet();
+      toast(`${ch.length}セット / 全${SH.sets.length}段を反映`); return;
+    }
+    case "dropAddStep": {
+      pullChains();
+      const c = SH.chains[a.dataset.c * 1], last = c[c.length - 1];
+      c.push({ kg: last ? last.kg : "", rep: "" }); drawSheet(); return;
+    }
+    case "dropDelStep": {
+      pullChains();
+      const ci = a.dataset.c * 1;
+      SH.chains[ci].splice(a.dataset.d * 1, 1);
+      if (!SH.chains[ci].length) SH.chains.splice(ci, 1);
+      if (!SH.chains.length) SH.chains = [EMPTY_CHAIN()];
+      drawSheet(); return;
+    }
+    case "dropDup": {
+      pullChains();
+      const ci = a.dataset.c * 1;
+      SH.chains.splice(ci + 1, 0, SH.chains[ci].map(s => ({ kg: s.kg, rep: s.rep })));
+      drawSheet(); toast("複製しました"); return;
+    }
+    case "dropDelChain": {
+      pullChains();
+      SH.chains.splice(a.dataset.c * 1, 1);
+      if (!SH.chains.length) SH.chains = [EMPTY_CHAIN()];
+      drawSheet(); return;
+    }
+    case "dropAddChain": pullChains(); SH.chains.push(EMPTY_CHAIN()); drawSheet(); return;
     case "saveLift": {
       pullSets();
       const sets = SH.sets.filter(s => num(s.kg) > 0 || num(s.rep) > 0).map(s => ({ kg: num(s.kg), rep: num(s.rep), d: s.d ? 1 : 0 }));
