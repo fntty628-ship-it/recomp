@@ -458,6 +458,15 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .setrow.drop{margin-top:-3px}
 .setrow .idx{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center;font-weight:600}
 
+.prevcopy{justify-content:flex-start;gap:9px;text-align:left;padding:8px 11px;
+  border-color:var(--hair2);background:var(--surf2)}
+.prevcopy:hover{border-color:var(--s2);background:var(--s2-tint)}
+.prevcopy .i{flex:none;display:grid;place-items:center;color:var(--s2)}
+.prevcopy .tx{min-width:0;display:flex;flex-direction:column;gap:1px;align-items:flex-start}
+.prevcopy .tx b{font-size:12.5px;font-weight:700}
+.prevcopy .s{max-width:100%;font-family:var(--fm);font-size:10.5px;color:var(--muted);font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ---------- ドロップセット入力 ---------- */
 .dchain{border:1.5px solid var(--hair2);border-radius:var(--r2);padding:9px 10px 10px;margin-bottom:9px;
   background:var(--surf2)}
@@ -1983,7 +1992,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-09-01b";
+const APP_VER = "2026-09-01c";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -4013,15 +4022,18 @@ function sheetQuick(slot) {
 }
 
 /* ---------------------------------------------------------------- 種目シート */
-function lastLift(name) {
+/* 同じ種目の直近の記録を、日付つきで返す */
+function lastLiftAt(name) {
   const ks = Object.keys(S.days).filter(k => k < CUR).sort().reverse();
-  for (const k of ks) { const l = (S.days[k].lifts || []).find(x => x.n === name); if (l && l.sets && l.sets.length) return l; }
+  for (const k of ks) {
+    const l = (S.days[k].lifts || []).find(x => x.n === name);
+    if (l && l.sets && l.sets.length) return { k, l };
+  }
   return null;
 }
-function lastSets(name) {
-  const l = lastLift(name);
-  return l ? l.sets.map(s => ({ kg: s.kg, rep: s.rep, d: s.d ? 1 : 0 })) : [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
-}
+function lastLift(name) { const r = lastLiftAt(name); return r ? r.l : null; }
+/* 入力欄は毎回まっさらから始める。前回の値は「前回をコピー」で明示的に入れる */
+const freshSets = () => [{ kg: "", rep: "" }, { kg: "", rep: "" }, { kg: "", rep: "" }];
 /* 片手入力の初期値: ダンベル・ケトルベルは既定で片手、前回の記録があればそれを優先 */
 function defaultBW(name) {
   const prev = lastLift(name);
@@ -4059,7 +4071,7 @@ function sheetLift(editIdx) {
         return `<div class="srch">${IC.srch}<input class="inp" data-q placeholder="種目名の一部(例: インクライン、スクワット、ロウ)" value="${esc(this.q)}"></div>
           <div class="cands">${this.cands()}</div>`;
       }
-      if (!this.sets.length) { this.sets = lastSets(this.sel.n); this.ph = defaultPH(this.sel.n); this.bw = defaultBW(this.sel.n); }
+      if (!this.sets.length) { this.sets = freshSets(); this.ph = defaultPH(this.sel.n); this.bw = defaultBW(this.sel.n); }
       if (this.mode === "drop") return this.dropBody();
       const w = weightAt(CUR);
       const canBW = isBW(this.sel.n);          /* 自重/加重を選べる種目か */
@@ -4092,6 +4104,16 @@ function sheetLift(editIdx) {
             <button class="pill" data-act="ph" data-v="0" aria-pressed="${!this.ph}">合計の重量</button>
           </div>
           <div class="sub" style="margin-top:5px">${this.ph ? "左右あるので、ボリュームは入力した重量の<b>2倍</b>で集計します" : "入力した重量をそのまま集計します(ゴブレット等、1個を両手で持つ種目)"}</div></div>` : ""}
+        ${(() => {
+      const pv = this.editIdx == null ? lastLiftAt(this.sel.n) : null;
+      if (!pv) return "";
+      const dd = parse(pv.k);
+      return `<button class="btn sm blk prevcopy" data-act="copyPrev" style="margin-bottom:11px">
+          <span class="i">${IC.copy}</span>
+          <span class="tx"><b>前回をコピー</b>
+            <span class="s">${dd.getMonth() + 1}/${dd.getDate()}(${DOW[dd.getDay()]}) · ${esc(setsSummary(pv.l))}</span></span>
+        </button>`;
+    })()}
         <div class="fld" style="margin-bottom:12px"><label>まとめて入力 — 同じ${useBW ? "回数" : "重量"}で何セットか</label>
           <div class="row" style="gap:6px">
             ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${canBW ? "+kg" : "kg"}" data-bulk="kg" style="flex:1;min-width:0">
@@ -4552,6 +4574,14 @@ document.addEventListener("click", ev => {
       if (empty) SH.sets = [];
       for (let i = 0; i < n; i++) SH.sets.push({ kg: kg || "", rep, d: 0 });
       drawSheet(); return;
+    }
+    case "copyPrev": {
+      const pv = lastLiftAt(SH.sel.n);
+      if (!pv) { toast("前回の記録がありません"); return; }
+      SH.sets = pv.l.sets.map(s => ({ kg: s.kg, rep: s.rep, d: s.d ? 1 : 0 }));
+      SH.ph = pv.l.ph ? 1 : 0; SH.bw = pv.l.bw ? 1 : 0;
+      const dd = parse(pv.k);
+      drawSheet(); toast(`${dd.getMonth() + 1}/${dd.getDate()}の内容をコピーしました`); return;
     }
     case "addSet": pullSets(); SH.sets.push({ kg: SH.sets.length ? SH.sets[SH.sets.length - 1].kg : "", rep: "" }); drawSheet(); return;
     case "delSet": pullSets(); SH.sets.splice(i, 1); if (!SH.sets.length) SH.sets = [{ kg: "", rep: "" }]; drawSheet(); return;
