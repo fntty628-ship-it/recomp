@@ -1573,6 +1573,7 @@ const LIFTS = [
 {n:"懸垂(パラレルグリップ)",m:"背中",e:"自重",met:8.0,k:"neutral grip pull up 懸垂 パラレル ニュートラル"},
 {n:"加重懸垂",m:"背中",e:"自重",met:8.0,k:"weighted pull up 加重懸垂 ウェイテッド 懸垂"},
 {n:"アシスト懸垂(マシン)",m:"背中",e:"マシン",met:5.0,k:"assisted pull up アシスト 懸垂 マシン"},
+{n:"アシストディップス(マシン)",m:"胸",e:"マシン",met:5.0,k:"assisted dips アシスト ディップス マシン 補助"},
 {n:"マッスルアップ",m:"背中",e:"自重",met:8.0,k:"muscle up マッスルアップ"},
 {n:"ラットプルダウン(ワイド)",m:"背中",e:"マシン",met:5.0,k:"lat pulldown wide ラットプルダウン ワイド ラットプル"},
 {n:"ラットプルダウン(ナロー)",m:"背中",e:"マシン",met:5.0,k:"lat pulldown narrow ラットプルダウン ナロー ラットプル"},
@@ -1992,7 +1993,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-09-01c";
+const APP_VER = "2026-09-03a";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2219,6 +2220,14 @@ function bwFrac(name) {
   for (const [re, v] of BW_FRAC) if (re.test(name)) return v;
   return 0;   /* プランク等の静的種目はボリューム換算しない */
 }
+/* アシストマシンは「補助してもらう重量」を入れる種目。
+   実際の負荷は 体重 − アシスト重量 なので、足すのではなく引く。 */
+const isAssist = n => /アシスト/.test(n) && bwFrac(n) > 0;
+/* 1レップあたりの負荷。ここに自重・加重・片手・アシストを全部集約する */
+function repLoad(name, bw, ph, kg, w) {
+  if (isAssist(name)) return Math.max(0, bwFrac(name) * w - num(kg));
+  return ((bw ? bwFrac(name) * w : 0) + num(kg)) * (ph ? 2 : 1);
+}
 /* その種目が「自重/荷重」の切替を出すべきか */
 function isBW(name) {
   const ex = LIFTS.find(x => x.n === name);
@@ -2253,11 +2262,12 @@ function liftCalc(l, w) {
      ボリュームは左右合計(×2)にする。ゴブレット等の片方だけ持つ種目は ph=0 にする。 */
   const mult = l.ph ? 2 : 1;
   /* 自重種目は「体重×係数」を1レップの負荷に足す。kg欄は加重ぶんだけ。 */
-  const frac = l.bw ? bwFrac(l.n) : 0;
+  const asst = isAssist(l.n);
+  const frac = (l.bw || asst) ? bwFrac(l.n) : 0;
   const bwLoad = frac * w;
-  const load = s => (bwLoad + num(s.kg)) * mult;
+  const load = s => repLoad(l.n, l.bw, l.ph, s.kg, w);
   return {
-    min, reps, rests, mult, rest, frac, bwLoad, met: l.met,
+    min, reps, rests, mult, rest, frac, bwLoad, asst, met: l.met,
     drops: sets.reduce((a, s, i) => a + (i > 0 && s.d ? 1 : 0), 0),
     kcal: kcalMet(l.met, w, min),
     vol: sets.reduce((a, s) => a + load(s) * num(s.rep), 0),
@@ -2887,9 +2897,12 @@ function stepCard(d, c) {
 /* セット列を読みやすい1行にする。ドロップセットは ⤵ でつなぎ、
    同じ内容を続けてやったぶんは「×3」とまとめる。 */
 function setsSummary(l) {
-  const one = s => l.bw
-    ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`)
-    : `${r1(s.kg)}×${r0(s.rep)}`;
+  const asst = isAssist(l.n);
+  const one = s => asst
+    ? `−${r1(s.kg)}×${r0(s.rep)}`
+    : l.bw
+      ? (num(s.kg) ? `+${r1(s.kg)}×${r0(s.rep)}` : `${r0(s.rep)}回`)
+      : `${r1(s.kg)}×${r0(s.rep)}`;
   const out = [];
   for (const c of setsToChains(l.sets || [])) {
     const t = c.map((s, j) => (j ? "⤵" : "") + one(s)).join("");
@@ -2910,7 +2923,7 @@ function liftCard(d, c) {
     const r = liftCalc(l, c.w);
     return `<div class="li">
           <div class="body"><div class="t1">${esc(l.n)}</div>
-            <div class="t2">${setsSummary(l)} · ${(l.sets || []).length}セット${r.drops ? ` · ドロップ${r.drops}` : ""}${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
+            <div class="t2">${setsSummary(l)} · ${(l.sets || []).length}セット${r.drops ? ` · ドロップ${r.drops}` : ""}${l.bw ? ` · 自重${r1(r.bwLoad)}kg換算` : ""}${r.asst ? ` · アシスト(体重${r1(r.bwLoad)}kgから差引)` : ""}${l.ph ? " · 片手入力" : ""}${r.orm ? ` · 推定1RM ${r1(r.orm)}kg` : ""}</div></div>
           <div class="r"><div class="a">${fmt(r.vol)}</div><div class="b">kg</div></div>
           <button class="x" data-act="editLift" data-i="${i}" aria-label="${esc(l.n)}を編集">${IC.pen}</button>
           <button class="x" data-act="delLift" data-i="${i}" aria-label="${esc(l.n)}を削除">${IC.x}</button>
@@ -4076,6 +4089,7 @@ function sheetLift(editIdx) {
       const w = weightAt(CUR);
       const canBW = isBW(this.sel.n);          /* 自重/加重を選べる種目か */
       const useBW = canBW && this.bw;
+      const asst = isAssist(this.sel.n);       /* アシストマシン(重量を引く) */
       const frac = bwFrac(this.sel.n), bwLoad = frac * w;
       const dumb = !canBW && (this.sel.e === "ダンベル" || this.sel.e === "ケトルベル");
       const reps = this.sets.reduce((a, s) => a + num(s.rep), 0);
@@ -4083,7 +4097,7 @@ function sheetLift(editIdx) {
       const restN = this.sets.reduce((a, s, i) => a + (i > 0 && s.d ? 0 : 1), 0);
       const estMin = (reps * S.set.repSec + restN * estRest) / 60;
       const mul = this.ph ? 2 : 1;
-      const vol = this.sets.reduce((a, s) => a + ((useBW ? bwLoad : 0) + num(s.kg)) * mul * num(s.rep), 0);
+      const vol = this.sets.reduce((a, s) => a + repLoad(this.sel.n, useBW, this.ph, s.kg, w) * num(s.rep), 0);
       return `<div class="row" style="margin-bottom:10px">
           ${this.editIdx == null ? `<button class="btn sm gh" data-act="backLift">${IC.L}戻る</button>` : ""}
           <span class="sp" style="flex:1"></span>
@@ -4098,6 +4112,7 @@ function sheetLift(editIdx) {
           <div class="sub" style="margin-top:5px">${useBW
       ? `体重 ${r1(w)}kg × <b>${r0(frac * 100)}%</b> = <b>${r1(bwLoad)}kg</b> が1レップの負荷。<b>回数だけ</b>入れてください。`
       : `体重ぶん(${r1(bwLoad)}kg)に<b>追加した重量</b>を入力してください。ディップスベルトやウェイトベストの重さです。`}</div></div>` : ""}
+        ${asst ? `<div class="note a" style="margin-bottom:11px">マシンに設定した<b>アシスト重量</b>を入れてください。実際の負荷は <b>体重 ${r1(w)}kg − アシスト重量</b> で計算します。アシストを減らすほどボリュームが増えます。</div>` : ""}
         ${dumb ? `<div class="fld" style="margin-bottom:11px"><label>入力する重量</label>
           <div class="pills">
             <button class="pill" data-act="ph" data-v="1" aria-pressed="${!!this.ph}">片手の重量</button>
@@ -4114,9 +4129,9 @@ function sheetLift(editIdx) {
             <span class="s">${dd.getMonth() + 1}/${dd.getDate()}(${DOW[dd.getDay()]}) · ${esc(setsSummary(pv.l))}</span></span>
         </button>`;
     })()}
-        <div class="fld" style="margin-bottom:12px"><label>まとめて入力 — 同じ${useBW ? "回数" : "重量"}で何セットか</label>
+        <div class="fld" style="margin-bottom:12px"><label>まとめて入力 — 同じ${useBW ? "回数" : asst ? "アシスト重量" : "重量"}で何セットか</label>
           <div class="row" style="gap:6px">
-            ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${canBW ? "+kg" : "kg"}" data-bulk="kg" style="flex:1;min-width:0">
+            ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${asst ? "補助" : canBW ? "+kg" : "kg"}" data-bulk="kg" style="flex:1;min-width:0">
             <span style="color:var(--muted);font-weight:700">×</span>`}
             <input class="inp mono n" type="number" inputmode="numeric" step="1" min="1" placeholder="回" data-bulk="rep" style="flex:1;min-width:0">
             <span style="color:var(--muted);font-weight:700">×</span>
@@ -4125,7 +4140,7 @@ function sheetLift(editIdx) {
             <button class="btn sm pri" data-act="bulkAdd" style="flex:none">${IC.plus}</button>
           </div></div>
         <div class="setrow${useBW ? " bw" : ""}" style="color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.06em">
-          <span></span>${useBW ? "" : `<span>${canBW ? "加重 (+kg)" : "重量 (kg)"}${dumb && this.ph ? "/片手" : ""}</span>`}<span>回数</span><span style="text-align:center">連続</span><span></span></div>
+          <span></span>${useBW ? "" : `<span>${asst ? "アシスト (−kg)" : canBW ? "加重 (+kg)" : "重量 (kg)"}${dumb && this.ph ? "/片手" : ""}</span>`}<span>回数</span><span style="text-align:center">連続</span><span></span></div>
         ${this.sets.map((s, i) => `<div class="setrow${useBW ? " bw" : ""}${i > 0 && s.d ? " drop" : ""}">
           <span class="idx">${i + 1}</span>
           ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" value="${s.kg}" data-set="${i}" data-fld="kg"${i === 0 ? " data-first" : ""}>`}
@@ -4150,17 +4165,17 @@ function sheetLift(editIdx) {
     dropBody() {
       const w = weightAt(CUR);
       const canBW = isBW(this.sel.n), useBW = canBW && this.bw;
-      const bwLoad = bwFrac(this.sel.n) * w, mul = this.ph ? 2 : 1;
+      const asst = isAssist(this.sel.n);
       let reps = 0, vol = 0, steps = 0;
       for (const c of this.chains) for (const s of c) {
         reps += num(s.rep); steps++;
-        vol += ((useBW ? bwLoad : 0) + num(s.kg)) * mul * num(s.rep);
+        vol += repLoad(this.sel.n, useBW, this.ph, s.kg, w) * num(s.rep);
       }
       const estRest = S.set.restSec * restFactor(this.sel.met);
       const estMin = (reps * S.set.repSec + this.chains.length * estRest) / 60;
       const pv = c => c.map(s => useBW
         ? (num(s.rep) || "?") + "回"
-        : (num(s.kg) || "?") + "×" + (num(s.rep) || "?")).join(" → ");
+        : (asst ? "−" : "") + (num(s.kg) || "?") + "×" + (num(s.rep) || "?")).join(" → ");
       return `<div class="row" style="margin-bottom:10px">
           <button class="btn sm gh" data-act="dropCancel">${IC.L}戻る</button>
           <span class="sp" style="flex:1"></span>
@@ -4177,7 +4192,7 @@ function sheetLift(editIdx) {
           </div>
           ${c.map((s, di) => `<div class="drow${useBW ? " bw" : ""}${di ? " d" : ""}">
             <span class="idx">${di ? "⤵" : "1"}</span>
-            ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${canBW ? "+kg" : "kg"}" value="${s.kg}" data-ch="${ci}" data-dr="${di}" data-fld="kg"${ci === 0 && di === 0 ? " data-first" : ""}>
+            ${useBW ? "" : `<input class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" placeholder="${asst ? "補助" : canBW ? "+kg" : "kg"}" value="${s.kg}" data-ch="${ci}" data-dr="${di}" data-fld="kg"${ci === 0 && di === 0 ? " data-first" : ""}>
             <span class="m">×</span>`}
             <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" placeholder="回" value="${s.rep}" data-ch="${ci}" data-dr="${di}" data-fld="rep"${useBW && ci === 0 && di === 0 ? " data-first" : ""}>
             <button class="x" data-act="dropDelStep" data-c="${ci}" data-d="${di}" aria-label="この段を削除">${IC.x}</button>
