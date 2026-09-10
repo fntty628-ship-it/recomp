@@ -467,6 +467,9 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 49
 .prevcopy .s{max-width:100%;font-family:var(--fm);font-size:10.5px;color:var(--muted);font-weight:500;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+.planrow.pk{background:var(--s3-tint);border-radius:var(--r3)}
+.planrow.pk .nm{color:var(--s3);font-weight:700}
+
 /* ---------- ドロップセット入力 ---------- */
 .dchain{border:1.5px solid var(--hair2);border-radius:var(--r2);padding:9px 10px 10px;margin-bottom:9px;
   background:var(--surf2)}
@@ -2014,7 +2017,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-09-08a";
+const APP_VER = "2026-09-10b";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2034,7 +2037,8 @@ const DEF = () => ({
     on: 1, label: PROFILE.label, date: PROFILE.date,
     startW: PROFILE.startW, startDate: "", targetW: PROFILE.targetW,
     tdee: PROFILE.tdee, actShare: 0.30, pKg: 2.1, fKg: 0.6, cMinKg: 1.6,
-    trainDays: 4, trainBonus: 300, bonusAuto: 1, peak: 1
+    trainDays: 4, trainBonus: 300, bonusAuto: 1,
+    peak: 1, peakUp: 2, peakCKg: 5.5
   },
   days: {}, my: [], sets: [], fav: { f: [], l: [], a: [] }
 });
@@ -2088,6 +2092,9 @@ function normalizeGoal() {
   if (!S.goal.date) S.goal.date = addD(TODAY, 60);
   if (!S.set.birth) S.set.birth = "1995-01-01";
   if (!(S.set.height > 0)) S.set.height = 170;
+  if (S.goal.peak == null) S.goal.peak = 1;
+  if (!(S.goal.peakUp >= 1)) S.goal.peakUp = 2;
+  if (!(S.goal.peakCKg > 0)) S.goal.peakCKg = 5.5;
 }
 normalizeGoal();
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
@@ -2442,15 +2449,43 @@ function plan(k) {
   out.fromFood = out.deficit - out.fromMove;
   return out;
 }
-/* その日の目標(トレ日/オフ日でカーボが変わる) */
+/* ------------------------------------------------- 仕上げ(カーボアップ)期
+   本番までの残り日数 D で段階が決まる。
+     D = 0        当日      … 食べ慣れたものを軽く
+     D = 1..up    カーボアップ … 脂質を落として炭水化物へ枠を回す
+     D = up + 1   移行日    … 減量をやめて維持カロリーへ戻す
+   動かすのは食事の目標だけで、目標消費には手を入れない。
+   該当しない日は null を返す。                                        */
+const peakUpDays = () => cl(r0(S.goal.peakUp == null ? 2 : S.goal.peakUp), 1, 3);
+function peakOf(k, pl) {
+  const g = S.goal;
+  if (!g.on || !g.peak || !g.date) return null;
+  const d = diffD(k, g.date), up = peakUpDays();
+  if (d < 0 || d > up + 1) return null;
+  const w = pl.w, ck = g.peakCKg > 0 ? g.peakCKg : 5.5;
+  let phase, p, f, c;
+  if (d === 0) {
+    phase = "当日"; p = g.pKg * w * 0.6; f = 0.30 * w; c = 1.5 * w;
+  } else if (d <= up) {
+    phase = "カーボアップ"; p = g.pKg * w; f = 0.40 * w; c = ck * w;
+  } else {
+    phase = "移行日"; p = g.pKg * w; f = g.fKg * w;
+    c = Math.max(g.cMinKg * w, (pl.maint - p * 4 - f * 9) / 4);
+  }
+  return { phase, d, up, p, f, c, kcal: p * 4 + f * 9 + c * 4 };
+}
+
+/* その日の目標(トレ日/オフ日でカーボが変わる。仕上げ期はそちらが優先) */
 function dayTarget(k) {
   const pl = plan(k), tr = calc(k).isTrain;
+  const burn = tr ? pl.burnTrain : pl.burnRest;
+  const pk = peakOf(k, pl);
+  if (pk) return { p: pk.p, f: pk.f, c: pk.c, kcal: pk.kcal, burn, isTrain: tr, pl, peak: pk };
   return {
     p: pl.p, f: pl.f,
     c: tr ? pl.cTrain : pl.cRest,
     kcal: tr ? pl.kcalTrain : pl.kcalRest,
-    burn: tr ? pl.burnTrain : pl.burnRest,
-    isTrain: tr, pl
+    burn, isTrain: tr, pl, peak: null
   };
 }
 
@@ -2473,7 +2508,9 @@ function weekBudget(k) {
     const t = dayTarget(d), c = calc(d);
     tk += t.kcal; tp += t.p; tf += t.f; tc += t.c;
     if (c.logged) { fk += c.kcal; fp += c.p; ff += c.f; fc += c.cb; }
-    if (d < cur) {
+    /* 仕上げ期は日ごとに決め打ちなので、残り日数への配分調整からは外す */
+    if (t.peak) { ak += t.kcal; ap += t.p; af += t.f; ac += t.c; }
+    else if (d < cur) {
       /* 記録が無い過去日は目標どおり食べたものとして扱う(過大な調整を防ぐ) */
       if (c.logged) { ak += c.kcal; ap += c.p; af += c.f; ac += c.cb; }
       else { ak += t.kcal; ap += t.p; af += t.f; ac += t.c; }
@@ -2483,9 +2520,12 @@ function weekBudget(k) {
   rem = Math.max(1, rem);
   const per = { kcal: (tk - ak) / rem, p: (tp - ap) / rem, f: (tf - af) / rem, c: (tc - ac) / rem };
   const base = dayTarget(cur);
+  /* 基準日そのものが仕上げ期なら、その日は決め打ちなので調整量はゼロ */
+  const z = !!base.peak;
   return {
-    ws, we, days, cur, rem, per, base, todayA, past,
-    adj: { kcal: per.kcal - base.kcal, p: per.p - base.p, f: per.f - base.f, c: per.c - base.c },
+    ws, we, days, cur, rem, per, base, todayA, past, peak: base.peak,
+    adj: z ? { kcal: 0, p: 0, f: 0, c: 0 }
+      : { kcal: per.kcal - base.kcal, p: per.p - base.p, f: per.f - base.f, c: per.c - base.c },
     tgt: { kcal: tk, p: tp, f: tf, c: tc },
     act: { kcal: fk, p: fp, f: ff, c: fc }
   };
@@ -2652,6 +2692,7 @@ function vDay() {
 
   <div class="card">
     <div class="card-h"><span class="card-t">エネルギー収支</span><span class="sp"></span>
+      ${t.peak ? `<span class="chip s3">${esc(t.peak.phase)}</span>` : ""}
       ${c.isTrain ? '<span class="chip s1">トレ日</span>' : '<span class="chip">オフ日</span>'}
       <button class="btn sm gh" data-act="toggleTd">切替</button>
     </div>
@@ -3702,6 +3743,7 @@ function vGoal() {
     </div>
   </div>
 
+  ${peakSetCard(pl)}
   ${menuCard()}
   ${left >= 0 && left <= 10 && g.peak ? peakCard(left) : ""}`;
 }
@@ -3803,21 +3845,47 @@ function menuCard() {
 }
 
 /* ------------------------------------------------------------ 仕上げ1週間 */
+function peakSetCard(pl) {
+  const g = S.goal, up = peakUpDays(), ck = g.peakCKg > 0 ? g.peakCKg : 5.5;
+  const lv = [[4, "控えめ"], [5.5, "標準"], [7, "しっかり"]];
+  return `<div class="card">
+    <div class="card-h"><span class="card-t">仕上げ (カーボアップ)</span><span class="sp"></span>
+      <span class="chip${g.peak ? " s3" : ""}">${g.peak ? "使う" : "使わない"}</span></div>
+    <div class="card-b">
+      <div class="fld"><label>カーボアップ / カーボローディング</label>
+        <div class="pills">
+          <button class="pill" data-act="peakOn" data-v="1" aria-pressed="${!!g.peak}">使う</button>
+          <button class="pill" data-act="peakOn" data-v="0" aria-pressed="${!g.peak}">使わない</button>
+        </div></div>
+      ${g.peak ? `
+      <div class="fld" style="margin-top:12px"><label>カーボアップの日数</label>
+        <div class="pills">${[1, 2, 3].map(n => `<button class="pill" data-act="peakUp" data-v="${n}" aria-pressed="${up === n}">${n}日</button>`).join("")}</div>
+        <div class="sub" style="margin-top:5px">本番の<b>前日から</b>数えます。そのさらに1日前が「移行日」(減量を止めて維持カロリーへ)になります。</div></div>
+      <div class="fld" style="margin-top:12px"><label>カーボアップ日の炭水化物</label>
+        <div class="pills">${lv.map(([q, l]) => `<button class="pill" data-act="peakC" data-v="${q}" aria-pressed="${ck === q}">${l} ${q}g/kg</button>`).join("")}</div>
+        <div class="sub" style="margin-top:5px">いまの体重 ${r1(pl.w)}kg なら <b>${r0(ck * pl.w)}g</b>。1日で入りきらないときは、量を増やすより<b>日数を増やす</b>方が確実です。</div></div>
+      <div class="note" style="margin-top:12px">この期間は<b>食事の目標だけ</b>が切り替わります(タンパク質は維持、脂質を落として炭水化物へ)。目標消費はそのままで、仕上げの日は<b>週次精算の対象から外れます</b>。</div>
+      ` : `<div class="sub" style="margin-top:8px">オフにすると本番当日まで通常の減量目標のままになります。下の「仕上げの◯日」も出なくなります。</div>`}
+    </div>
+  </div>`;
+}
+
 function peakCard(left) {
-  const pl = plan(TODAY), w = pl.w;
+  /* 行の数字は dayTarget() をそのまま読む。表示と実際の目標が食い違わないように。 */
+  const NOTE = {
+    "当日": "食べ慣れたものを軽く。初めてのものは入れない",
+    "カーボアップ": "白米・餅・和菓子。低脂質・低繊維で。塩分は普段どおり",
+    "移行日": "減量はここで終了。脂質を落として炭水化物へ枠を回す"
+  };
   const rows = [];
   for (let i = left; i >= 0; i--) {
-    const k = addD(TODAY, left - i);
-    const d = parse(k);
-    let nm, kc, cb, note;
-    if (i > 2) { nm = "減量継続"; kc = pl.kcal; cb = pl.cRest; note = "ここで粘るほど仕上がる"; }
-    else if (i === 2) { nm = "減量終了・維持へ"; kc = pl.tdee; cb = w * 4; note = "脂質は40g程度に抑えてカーボへ枠を回す"; }
-    else if (i === 1) { nm = "カーボアップ"; kc = pl.tdee + 200; cb = w * 5; note = "白米・餅・和菓子。低脂質・低繊維で。塩分は普段どおり"; }
-    else { nm = "当日"; kc = pl.tdee * 0.4; cb = w * 1.5; note = "食べ慣れたものを軽く。初めてのものは入れない"; }
-    rows.push(`<div class="planrow">
-      <span class="dd">${i === 0 ? "当日" : "D-" + i}<br>${d.getMonth() + 1}/${d.getDate()}</span>
+    const k = addD(TODAY, left - i), dt = parse(k), t = dayTarget(k);
+    const nm = t.peak ? t.peak.phase : "減量継続";
+    const note = t.peak ? NOTE[t.peak.phase] : "ここで粘るほど仕上がる";
+    rows.push(`<div class="planrow${t.peak ? " pk" : ""}">
+      <span class="dd">${i === 0 ? "当日" : "D-" + i}<br>${dt.getMonth() + 1}/${dt.getDate()}</span>
       <span class="nm">${nm}<i>${note}</i></span>
-      <span class="v">${fmt(kc)} kcal<br><span style="color:var(--muted)">C ${r0(cb)}g</span></span>
+      <span class="v">${fmt(t.kcal)} kcal<br><span style="color:var(--muted)">C ${r0(t.c)}g · F ${r0(t.f)}g</span></span>
     </div>`);
   }
   return `<div class="card">
@@ -3829,6 +3897,7 @@ function peakCard(left) {
     </div>
   </div>`;
 }
+
 </script>
 
 <script>
@@ -4588,6 +4657,9 @@ document.addEventListener("click", ev => {
     case "life": S.set.life = num(a.dataset.v); save(); render(); return;
     case "share": S.goal.actShare = num(a.dataset.v); save(); render(); return;
     case "bonusAuto": S.goal.bonusAuto = a.dataset.v === "1" ? 1 : 0; save(); render(); return;
+    case "peakOn": S.goal.peak = a.dataset.v === "1" ? 1 : 0; save(); render(); return;
+    case "peakUp": S.goal.peakUp = cl(r0(num(a.dataset.v)), 1, 3); save(); render(); return;
+    case "peakC": S.goal.peakCKg = cl(num(a.dataset.v), 1, 12); save(); render(); return;
     case "toggleTd": edit(CUR, d => { d.td = !calc(CUR).isTrain ? 1 : 0; }); render(); return;
 
     case "addFood": sheetFood(a.dataset.slot); return;
