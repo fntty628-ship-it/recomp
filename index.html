@@ -87,6 +87,100 @@
   --sh3:0 8px 24px -8px rgba(0,0,0,.55);
 }
 
+
+
+
+
+/* ============================================================
+   スキン(見た目の切替)。data-skin が無ければ標準。
+   筋トレ系は赤・黒のダーク固定。ランニング系はライト/ダーク両対応。
+   theme のルールより後ろに置き、属性2つぶんの詳細度で勝たせる。
+   ============================================================ */
+:root[data-skin="iron"],:root[data-skin="iron"][data-theme]{
+  color-scheme:dark;
+  --plane:#0E0E10; --surf:#19191D; --surf2:#212126; --surf3:#2B2B32;
+  --ink:#F4F1EC; --ink2:#C7C1B9; --muted:#8E877E;
+  --grid:#2A2A31; --base:#3C3C45;
+  --hair:rgba(244,241,236,.09); --hair2:rgba(244,241,236,.16);
+  --s1:#EAE4D8; --s2:#E5383B; --s3:#B08CFF;
+  --s1-soft:rgba(234,228,216,.16); --s2-soft:rgba(229,56,59,.22); --s3-soft:rgba(176,140,255,.22);
+  --s1-tint:rgba(234,228,216,.06); --s2-tint:rgba(229,56,59,.10); --s3-tint:rgba(176,140,255,.10);
+  --good:#4ADE80; --warn:#FFB020; --crit:#FF5C5C; --warn-ink:#FFC862;
+  --good-soft:rgba(74,222,128,.20); --warn-soft:rgba(255,176,32,.20); --crit-soft:rgba(255,92,92,.20);
+  --sh1:0 1px 2px rgba(0,0,0,.42);
+  --sh2:0 2px 4px rgba(0,0,0,.32),0 14px 30px -16px rgba(0,0,0,.7);
+  --sh3:0 8px 24px -8px rgba(0,0,0,.6);
+}
+:root[data-skin="run"],:root[data-skin="run"][data-theme="light"]{
+  color-scheme:light;
+  --plane:#EAF5FA; --surf:#FFFFFF; --surf2:#F2F9FC; --surf3:#E1EFF6;
+  --ink:#0F2B3D; --ink2:#3F5F78; --muted:#7791A6;
+  --grid:#DAE8F1; --base:#B7D0E0;
+  --hair:rgba(15,43,61,.09); --hair2:rgba(15,43,61,.15);
+  --s1:#FF7A45; --s2:#149BAE; --s3:#6A5CFF;
+  --s1-soft:rgba(255,122,69,.14); --s2-soft:rgba(20,155,174,.14); --s3-soft:rgba(106,92,255,.14);
+  --s1-tint:rgba(255,122,69,.07); --s2-tint:rgba(20,155,174,.07); --s3-tint:rgba(106,92,255,.07);
+  --good:#1FA35A; --warn:#F2A900; --crit:#E0393E; --warn-ink:#8A5D00;
+  --good-soft:rgba(31,163,90,.13); --warn-soft:rgba(242,169,0,.18); --crit-soft:rgba(224,57,62,.13);
+  --sh1:0 1px 2px rgba(15,43,61,.06);
+  --sh2:0 2px 4px rgba(15,43,61,.05),0 14px 30px -16px rgba(15,43,61,.22);
+  --sh3:0 8px 24px -8px rgba(15,43,61,.24);
+}
+@media (prefers-color-scheme: dark){
+  :root[data-skin="run"]:not([data-theme="light"]){
+    color-scheme:dark;
+    --plane:#0B1B26; --surf:#132837; --surf2:#1A3243; --surf3:#233D50;
+    --ink:#EAF4FA; --ink2:#B3C9D8; --muted:#7F9AAE;
+    --grid:#223B4D; --base:#34556B;
+    --hair:rgba(234,244,250,.10); --hair2:rgba(234,244,250,.17);
+    --s1:#FF8A5C; --s2:#2BB5C8; --s3:#8C82FF;
+    --s1-soft:rgba(255,138,92,.20); --s2-soft:rgba(43,181,200,.20); --s3-soft:rgba(140,130,255,.22);
+    --s1-tint:rgba(255,138,92,.10); --s2-tint:rgba(43,181,200,.10); --s3-tint:rgba(140,130,255,.11);
+    --good:#3ED27C; --warn:#FFC145; --crit:#FF6B6B; --warn-ink:#FFC145;
+    --good-soft:rgba(62,210,124,.22); --warn-soft:rgba(255,193,69,.20); --crit-soft:rgba(255,107,107,.20);
+    --sh1:0 1px 2px rgba(0,0,0,.34);
+    --sh2:0 2px 4px rgba(0,0,0,.28),0 14px 30px -16px rgba(0,0,0,.6);
+    --sh3:0 8px 24px -8px rgba(0,0,0,.55);
+  }
+}
+:root[data-skin="run"][data-theme="dark"]{
+  color-scheme:dark;
+  --plane:#0B1B26; --surf:#132837; --surf2:#1A3243; --surf3:#233D50;
+  --ink:#EAF4FA; --ink2:#B3C9D8; --muted:#7F9AAE;
+  --grid:#223B4D; --base:#34556B;
+  --hair:rgba(234,244,250,.10); --hair2:rgba(234,244,250,.17);
+  --s1:#FF8A5C; --s2:#2BB5C8; --s3:#8C82FF;
+  --s1-soft:rgba(255,138,92,.20); --s2-soft:rgba(43,181,200,.20); --s3-soft:rgba(140,130,255,.22);
+  --s1-tint:rgba(255,138,92,.10); --s2-tint:rgba(43,181,200,.10); --s3-tint:rgba(140,130,255,.11);
+  --good:#3ED27C; --warn:#FFC145; --crit:#FF6B6B; --warn-ink:#FFC145;
+  --good-soft:rgba(62,210,124,.22); --warn-soft:rgba(255,193,69,.20); --crit-soft:rgba(255,107,107,.20);
+  --sh1:0 1px 2px rgba(0,0,0,.34);
+  --sh2:0 2px 4px rgba(0,0,0,.28),0 14px 30px -16px rgba(0,0,0,.6);
+  --sh3:0 8px 24px -8px rgba(0,0,0,.55);
+}
+
+/* イラスト背景。固定レイヤーを body の下に敷き、カードはその上に載る。
+   iOS は background-attachment:fixed が効かないので ::before で固定する。 */
+:root[data-skin] body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-repeat:no-repeat;
+}
+:root[data-skin] .app{position:relative; z-index:1}
+/* ロゴだけスキンの主役色に寄せる */
+:root[data-skin="iron"] .brand-mark{background:linear-gradient(140deg,#FF5A5E,#8E1B1E 92%)}
+:root[data-skin="run"] .brand-mark{background:linear-gradient(140deg,var(--s2),var(--s3) 92%)}
+:root[data-skin="iron"] body::before{
+  background:
+    radial-gradient(70% 55% at 8% 100%, rgba(229,56,59,.28), transparent 70%),
+    radial-gradient(45% 40% at 96% 4%, rgba(234,228,216,.07), transparent 70%),
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 1200'%3E %3Cg fill='none' stroke='%23E5383B' stroke-width='16' stroke-linecap='round' opacity='.40' transform='rotate%28-34 300 470%29'%3E %3Cpath d='M30 470h540'/%3E %3Cpath d='M118 350v240M150 315v310M182 380v180'/%3E %3Cpath d='M482 350v240M450 315v310M418 380v180'/%3E %3Cpath d='M70 452v36M530 452v36'/%3E %3C/g%3E %3Cg fill='none' stroke='%23EAE4D8' stroke-width='5' opacity='.16'%3E %3Ccircle cx='92' cy='150' r='66'/%3E%3Ccircle cx='92' cy='150' r='18'/%3E %3Ccircle cx='525' cy='1080' r='70'/%3E%3Ccircle cx='525' cy='1080' r='18'/%3E %3Ccircle cx='535' cy='190' r='42'/%3E%3Ccircle cx='535' cy='190' r='11'/%3E %3Ccircle cx='70' cy='1060' r='48'/%3E%3Ccircle cx='70' cy='1060' r='13'/%3E %3C/g%3E %3Cg fill='none' stroke='%23EAE4D8' stroke-width='4' stroke-linecap='round' opacity='.14' transform='translate%28215 40%29 scale%284.2%29'%3E %3Cpath d='M3 9v6m3-8v10M18 7v10m3-8v6M6 12h12'/%3E %3C/g%3E %3Cg fill='none' stroke='%23EAE4D8' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round' opacity='.62' transform='translate%28120 790%29 scale%2815%29'%3E %3Ccircle cx='12' cy='3' r='2'/%3E %3Cpath d='M9 6.4h6l-1.1 7.2h-3.8z'/%3E %3Cpath d='M9 6.8 4.4 8l1.4-4.6M15 6.8l4.6 1.2-1.4-4.6'/%3E %3Cpath d='M10.4 13.6 9.2 21.4H7.6M13.6 13.6l1.2 7.8h1.6'/%3E %3C/g%3E %3C/svg%3E") center / cover no-repeat;
+}
+:root[data-skin="run"] body::before{
+  background:
+    linear-gradient(180deg, rgba(20,155,174,.16), transparent 45%),
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 1200'%3E %3Ccircle cx='470' cy='200' r='96' fill='%23FF7A45' opacity='.26'/%3E %3Ccircle cx='470' cy='200' r='136' fill='none' stroke='%23FF7A45' stroke-width='3' opacity='.18'/%3E %3Cg fill='%23149BAE' opacity='.16'%3E %3Cellipse cx='150' cy='262' rx='118' ry='36'/%3E%3Cellipse cx='205' cy='238' rx='74' ry='42'/%3E%3Cellipse cx='95' cy='246' rx='56' ry='32'/%3E %3Cellipse cx='420' cy='392' rx='84' ry='26'/%3E%3Cellipse cx='462' cy='374' rx='50' ry='31'/%3E %3C/g%3E %3Cpath d='M0 890C90 830 180 950 300 890S500 810 600 870V1200H0Z' fill='%23149BAE' opacity='.18'/%3E %3Cpath d='M0 995C120 940 220 1075 345 995S520 935 600 985V1200H0Z' fill='%23149BAE' opacity='.26'/%3E %3Cpath d='M-20 1130C150 1055 260 1165 400 1095S560 1035 620 1080' fill='none' stroke='%23FF7A45' stroke-width='6' stroke-dasharray='26 20' opacity='.45'/%3E %3Cg fill='none' stroke='%23149BAE' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round' opacity='.62' transform='translate%28140 540%29 scale%2813.5%29'%3E %3Ccircle cx='15' cy='4.6' r='2.1'/%3E %3Cpath d='M12.5 21l1.2-5.2-2.9-2.4.9-4.6 3.1-1.1 2.2 3.4 2.8 1'/%3E %3Cpath d='M11.7 8.8 8.4 10l-1.6 3.2M13.7 15.8 10 16.4 7.6 21'/%3E %3C/g%3E %3C/svg%3E") center bottom / cover no-repeat;
+}
+
 *{box-sizing:border-box}
 /* 画面の縮尺を固定する。touch-action:pan-y で縦スクロールだけ許可し、
    ピンチ拡大・ダブルタップ拡大・横方向のパンを止める。
@@ -2017,7 +2111,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-09-10b";
+const APP_VER = "2026-09-17a";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2031,7 +2125,7 @@ const DEF = () => ({
     sex: PROFILE.sex, birth: PROFILE.birth, height: PROFILE.height,
     bmrF: "mifflin", bmrManual: 0, life: 1.15,
     cadence: 112, stepSpeed: 1.25, tef: 1, repSec: 3, restSec: 90,
-    theme: "auto", setupDone: PROFILE.setup ? 0 : 1
+    theme: "auto", skin: "std", setupDone: PROFILE.setup ? 0 : 1
   },
   goal: {
     on: 1, label: PROFILE.label, date: PROFILE.date,
@@ -3964,9 +4058,18 @@ function vSet() {
   <div class="card">
     <div class="card-h"><span class="card-t">表示</span></div>
     <div class="card-b">
+      <div class="fld"><label>スキン</label>
+        <div class="pills">
+          ${[["std", "標準"], ["iron", "筋トレ"], ["run", "ランニング"]].map(([v, n]) =>
+    `<button class="pill" data-act="skin" data-v="${v}" aria-pressed="${(st.skin || "std") === v}">${n}</button>`).join("")}
+        </div>
+        <div class="sub" style="margin-top:5px">${(st.skin || "std") === "iron" ? "筋トレ系は赤・黒のダーク固定です。" : (st.skin || "std") === "run" ? "ランニング系はライト/ダークどちらにも対応します。" : "標準の配色です。"}</div>
+      </div>
+      <div class="fld" style="margin-top:11px"><label>ライト / ダーク</label>
       <div class="pills">
         ${[["auto", "端末に合わせる"], ["light", "ライト"], ["dark", "ダーク"]].map(([v, n]) =>
-    `<button class="pill" data-act="theme" data-v="${v}" aria-pressed="${st.theme === v}">${n}</button>`).join("")}
+    `<button class="pill" data-act="theme" data-v="${v}" aria-pressed="${st.theme === v}"${(st.skin || "std") === "iron" ? " disabled style=\"opacity:.45\"" : ""}>${n}</button>`).join("")}
+      </div>
       </div>
     </div>
   </div>
@@ -3977,7 +4080,7 @@ function vSet() {
     <div class="card-b tight">
       ${S.my.length ? S.my.map((f, i) => `<div class="li">
         <div class="body"><div class="t1">${esc(f.n)}</div>
-          <div class="t2">100gあたり ${fmt(f.kcal)}kcal · P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}${f.u && f.u.length ? " · " + f.u.map(u => u[0] + "=" + u[1] + "g").join(" ") : ""}</div></div>
+          <div class="t2">${f.c === "直接入力" ? "1食分" : "100gあたり"} ${fmt(f.kcal)}kcal · P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}${f.c !== "直接入力" && f.u && f.u.length ? " · " + f.u.map(u => u[0] + "=" + u[1] + "g").join(" ") : ""}${f.c === "直接入力" ? " · 直接入力から自動登録" : ""}</div></div>
         <button class="x" data-act="delMyFood" data-i="${i}" aria-label="削除">${IC.x}</button></div>`).join("")
       : '<div class="empty">商品パッケージの成分表から登録すると、次から単位で呼び出せます</div>'}
     </div>
@@ -4056,7 +4159,7 @@ function sheetFood(slot) {
         </div></div>`;
       return list.map(f => `<button class="cand" data-act="pickFood" data-n="${esc(f.n)}">
         <div class="body"><div class="t1">${esc(f.n)}</div>
-          <div class="t2">100g: ${fmt(f.kcal)}kcal P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}</div></div>
+          <div class="t2">${f.c === "直接入力" ? "1食分" : "100g"}: ${fmt(f.kcal)}kcal P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}</div></div>
         <span class="tag">${esc(f.c)}</span></button>`).join("");
     },
     body() {
@@ -4072,13 +4175,15 @@ function sheetFood(slot) {
           <button class="btn sm gh" data-act="favFood">${IC.star}${S.fav.f.includes(f.n) ? "よく使うから外す" : "よく使うに追加"}</button>
         </div>
         <div style="font-size:16px;font-weight:600;margin-bottom:2px">${esc(f.n)}</div>
-        <div class="sub" style="margin-bottom:11px">100gあたり ${fmt(f.kcal)}kcal · P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}${f.s ? " · 食塩" + r1(f.s) + "g" : ""}</div>
-        ${f.u && f.u.length ? `<div class="fld"><label>単位で入れる</label><div class="pills">
+        <div class="sub" style="margin-bottom:11px">${f.c === "直接入力" ? "1食分" : "100gあたり"} ${fmt(f.kcal)}kcal · P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}${f.s ? " · 食塩" + r1(f.s) + "g" : ""}${f.c === "直接入力" ? " <span style=\"color:var(--muted)\">(直接入力から自動登録)</span>" : ""}</div>
+        ${f.c !== "直接入力" && f.u && f.u.length ? `<div class="fld"><label>単位で入れる</label><div class="pills">
           ${f.u.map((u, i) => `<button class="pill" data-act="unit" data-i="${i}" aria-pressed="${this.ql === u[0]}">${esc(u[0])} <span style="opacity:.7">${u[1]}g</span></button>`).join("")}
         </div></div>` : ""}
         <div class="grid2" style="margin-top:6px">
-          <div class="fld"><label for="fg">重量 (g)</label>
-            <input id="fg" data-first class="inp mono n" type="number" inputmode="decimal" step="1" min="0" value="${r0(this.g)}" data-fg></div>
+          <div class="fld"><label for="fg">${f.c === "直接入力" ? "何食分 (1 = 1食分)" : "重量 (g)"}</label>
+            ${f.c === "直接入力"
+      ? `<input id="fg" data-first class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" value="${r1(this.g / 100)}" data-fg data-serv>`
+      : `<input id="fg" data-first class="inp mono n" type="number" inputmode="decimal" step="1" min="0" value="${r0(this.g)}" data-fg>`}</div>
           <div class="fld"><label>この量の内容</label>
             <div class="inp mono" style="background:var(--surf3);border-style:dashed" data-prev>${fmt(f.kcal * r)} kcal / P${r1(f.p * r)} F${r1(f.f * r)} C${r1(f.cb * r)}</div></div>
         </div>
@@ -4124,7 +4229,7 @@ function sheetQuick(slot) {
   openSheet({
     title: "カロリーを直接入力", slot,
     body() {
-      return `<div class="sub" style="margin-bottom:12px">検索で出てこないもの、外食、手作り料理など。<b>食品名とカロリーだけで登録できます。</b></div>
+      return `<div class="sub" style="margin-bottom:12px">検索で出てこないもの、外食、手作り料理など。<b>食品名とカロリーだけで登録できます。</b>名前をつけたものは<b>次から検索で出ます</b>(同じ名前で入れ直すと値が更新されます)。</div>
         <div class="fld"><label for="qn">食品名</label>
           <input id="qn" data-first class="inp" data-q1="n" placeholder="例: 母のカレー、社食の日替わり" autocomplete="off"></div>
         <div class="grid2" style="margin-top:11px">
@@ -4592,9 +4697,11 @@ function render() {
   }
 }
 function applyTheme() {
-  const t = S.set.theme;
+  const t = S.set.theme, sk = S.set.skin || "std";
   if (t === "auto") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", t);
+  if (sk === "std") document.documentElement.removeAttribute("data-skin");
+  else document.documentElement.setAttribute("data-skin", sk);
 }
 function go(view) { VIEW = view; window.scrollTo(0, 0); render(); }
 
@@ -4653,7 +4760,8 @@ document.addEventListener("click", ev => {
     case "pp": CH.anchor = CH.span === "week" ? addD(CH.anchor, -7) : monthStart(addD(monthStart(CH.anchor), -1)); render(); return;
     case "np": CH.anchor = CH.span === "week" ? addD(CH.anchor, 7) : monthStart(addD(monthStart(CH.anchor), 32)); render(); return;
     case "tbl": CH.tables[a.dataset.id] = !CH.tables[a.dataset.id]; render(); return;
-    case "theme": S.set.theme = a.dataset.v; save(); render(); return;
+    case "theme": S.set.theme = a.dataset.v; save(); applyTheme(); render(); return;
+    case "skin": S.set.skin = a.dataset.v; save(); applyTheme(); render(); return;
     case "life": S.set.life = num(a.dataset.v); save(); render(); return;
     case "share": S.goal.actShare = num(a.dataset.v); save(); render(); return;
     case "bonusAuto": S.goal.bonusAuto = a.dataset.v === "1" ? 1 : 0; save(); render(); return;
@@ -4669,11 +4777,13 @@ document.addEventListener("click", ev => {
     case "favFood": { const n = SH.sel.n, x = S.fav.f.indexOf(n); x < 0 ? S.fav.f.unshift(n) : S.fav.f.splice(x, 1); save(); drawSheet(); return; }
     case "saveFood": {
       const host = document.getElementById("sheetHost");
-      const gg = num(host.querySelector("[data-fg]").value);
+      const fgEl = host.querySelector("[data-fg]");
+      const serv = fgEl.hasAttribute("data-serv");            /* 直接入力由来: 1 = 1食分 */
+      const gg = serv ? num(fgEl.value) * 100 : num(fgEl.value);
       const slot = host.querySelector("[data-fslot]").value;
-      if (gg <= 0) { toast("重量を入れてください"); return; }
+      if (gg <= 0) { toast(serv ? "何食分か入れてください" : "重量を入れてください"); return; }
       const f = SH.sel, r = gg / 100;
-      const q = SH.ql && Math.abs(SH.g - gg) < 0.01 ? SH.ql : r0(gg) + "g";
+      const q = serv ? (r === 1 ? "1食分" : r1(r) + "食分") : (SH.ql && Math.abs(SH.g - gg) < 0.01 ? SH.ql : r0(gg) + "g");
       edit(CUR, d => d.meals.push({ n: f.n, g: gg, q, slot, kcal: f.kcal * r, p: f.p * r, f: f.f * r, cb: f.cb * r, s: (f.s || 0) * r }));
       closeSheet(); render(); toast(`${f.n} を追加`); return;
     }
@@ -4685,7 +4795,20 @@ document.addEventListener("click", ev => {
       if (v.kcal <= 0) { toast("カロリー、または P/F/C を入れてください"); return; }
       const n = v.n || "直接入力";
       edit(CUR, d => d.meals.push({ n, g: 0, q: "直接入力", slot: v.slot, kcal: v.kcal, p: v.p, f: v.f, cb: v.cb, s: v.s }));
-      closeSheet(); render(); toast(`${n} ${fmt(v.kcal)} kcal を追加`); return;
+      /* 名前をつけた直接入力は、次から検索で出るように自分の食品リストへ入れる。
+         1食ぶんの値を「100g = 1食分」として持たせると、既存の選択→量入力の流れに乗る。 */
+      let learned = false;
+      if (v.n) {
+        const rec = { n, c: "直接入力", kcal: v.kcal, p: v.p, f: v.f, cb: v.cb, s: v.s, u: [["1食分", 100]] };
+        const i0 = S.my.findIndex(f => f.n === n);
+        if (i0 < 0) {
+          if (!FOODS.some(f => f.n === n)) { S.my.unshift(rec); learned = true; }
+        } else if (S.my[i0].c === "直接入力") {
+          S.my[i0] = rec; learned = true;           /* 同じ名前なら最新の値で上書き */
+        }
+        if (learned) save();
+      }
+      closeSheet(); render(); toast(`${n} ${fmt(v.kcal)} kcal を追加${learned ? " · 次から検索で出ます" : ""}`); return;
     }
 
     case "addLift": sheetLift(null); return;
@@ -4909,13 +5032,14 @@ document.addEventListener("input", ev => {
   const el = ev.target;
   if (!SH) return;
   if (el.dataset.q1) { quickPreview(); return; }
-  if (el.dataset.fg && SH.sel) {
-    const gg = num(el.value), f = SH.sel, r = gg / 100;
+  /* data-fg は値なしの属性なので、in で判定する(空文字は falsy) */
+  if ("fg" in el.dataset && SH.sel) {
+    const gg = el.hasAttribute("data-serv") ? num(el.value) * 100 : num(el.value), f = SH.sel, r = gg / 100;
     const p = document.querySelector("[data-prev]");
     if (p) p.textContent = `${fmt(f.kcal * r)} kcal / P${r1(f.p * r)} F${r1(f.f * r)} C${r1(f.cb * r)}`;
     if (SH.ql && Math.abs(gg - SH.g) > 0.01) { SH.ql = null; document.querySelectorAll('[data-act="unit"]').forEach(b => b.setAttribute("aria-pressed", "false")); }
   }
-  if (el.dataset.amin && SH.sel) {
+  if ("amin" in el.dataset && SH.sel) {
     const m = num(el.value), w = weightAt(CUR), a = SH.sel;
     const p = document.querySelector("[data-aprev]");
     if (p) p.innerHTML = `推定消費 <b>${fmt(kcalMet(a.met, w, m))} kcal</b>${a.amb ? ` · 推定 ${actSteps({ amb: 1, met: a.met, min: m }).toLocaleString("ja-JP")} 歩` : ""}`;
