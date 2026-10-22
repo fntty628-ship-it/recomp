@@ -828,7 +828,7 @@ kbd{font-family:var(--fm);font-size:11px;border:1.5px solid var(--hair2);border-
 /* ==========================================================================
    リコンプ計量室 — engine
    Energy model:
-     消費 = 基礎代謝 x 生活係数 + 歩数(net) + 傾斜ウォーク(net)
+     消費 = 基礎代謝 x 生活係数 + 歩数(net) + ランニング(net)
             + トレ(net) + 運動(net) + 食事誘発性熱産生
    All activity terms are NET of rest (1 MET) so nothing is double-counted
    against 基礎代謝. Walking / incline / running use the ACSM metabolic
@@ -2111,7 +2111,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-09-17a";
+const APP_VER = "2026-10-22b";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2181,6 +2181,23 @@ const diffD = (a, b) => Math.round((parse(b) - parse(a)) / 86400000);
 const TODAY = key(new Date());
 /* 目標日・開始日が空(公開版の初期状態や全削除の直後)なら、開いた日を基準に埋める。
    ここが空のまま目標画面を開くと日付計算が NaN になるため、状態を作り直す箇所では必ず通す。 */
+/* 旧「傾斜ウォーク」(勾配%・速度m/s・分)をランニングの形式へ移す。
+   距離 = 速度 x 時間 なので情報は失われない。1回だけ走る。 */
+function migrateRuns() {
+  let n = 0;
+  for (const k in S.days) {
+    const d = S.days[k];
+    if (!d || !d.inc || !d.inc.length) continue;
+    d.run = (d.run || []).concat(d.inc.map(e => ({
+      km: Math.round(((num(e.sp) * 60 * num(e.min)) / 1000) * 100) / 100,
+      sec: Math.round(num(e.min) * 60),
+      g: num(e.g)
+    })));
+    d.inc = [];
+    n++;
+  }
+  return n;
+}
 function normalizeGoal() {
   if (!S.goal.startDate) S.goal.startDate = TODAY;
   if (!S.goal.date) S.goal.date = addD(TODAY, 60);
@@ -2191,6 +2208,7 @@ function normalizeGoal() {
   if (!(S.goal.peakCKg > 0)) S.goal.peakCKg = 5.5;
 }
 normalizeGoal();
+migrateRuns();
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 const dowOf = k => parse(k).getDay();
 /* 週は月曜始まり */
@@ -2223,7 +2241,7 @@ function toast(msg) {
 }
 
 /* ------------------------------------------------------------- day record */
-function blank() { return { w: null, bf: null, steps: 0, inc: [], meals: [], lifts: [], acts: [], td: null, trainMin: 0, note: "" }; }
+function blank() { return { w: null, bf: null, steps: 0, inc: [], run: [], meals: [], lifts: [], acts: [], td: null, trainMin: 0, note: "" }; }
 function day(k) {
   const d = S.days[k];
   if (!d) return blank();
@@ -2237,7 +2255,7 @@ function edit(k, fn) {
   DATA_STAMP++;
   save();
 }
-const hasData = d => !!(d.meals.length || d.lifts.length || d.acts.length || d.inc.length || d.steps || d.w != null || d.bf != null || d.note);
+const hasData = d => !!(d.meals.length || d.lifts.length || d.acts.length || (d.run || []).length || d.inc.length || d.steps || d.w != null || d.bf != null || d.note);
 
 /* 体重: その日の記録 → 直近の過去記録 → 開始体重 */
 function weightAt(k) {
@@ -2295,15 +2313,113 @@ const kcalVo2 = (vo2, w, min) => Math.max(0, ((vo2 - 3.5) * w * min) / 200);
 const kcalMet = (met, w, min) => Math.max(0, ((met - 1) * 3.5 * w * min) / 200);
 const walkCad = ms => cl(100 + 30 * (ms - 1.0), 88, 142);
 
-function incCalc(e, w) {
-  const g = num(e.g) / 100, ms = num(e.sp), min = num(e.min);
-  const run = ms >= 2.0;
-  const vo2 = run ? vo2Run(ms, g) : vo2Walk(ms, g);
+/* ====================================================== ランニングの評価
+   消費は ACSM、走力の評価は Daniels & Gilbert の VDOT を使う。
+   VDOT は「その走りから逆算した実効 VO2max」で、1つの数字から
+   練習ペースもレース予測も出せるのが利点。                           */
+const vo2AtVel = v => -4.60 + 0.182258 * v + 0.000104 * v * v;   /* v = m/分 */
+const pctAtMin = t => 0.8 + 0.1894393 * Math.exp(-0.012778 * t)
+  + 0.2989558 * Math.exp(-0.1932605 * t);                        /* t = 分 */
+function vdotOf(km, sec) {
+  const t = sec / 60, v = (km * 1000) / t;
+  return t > 0 && v > 0 ? vo2AtVel(v) / pctAtMin(t) : 0;
+}
+/* VO2 から速度(m/分)へ。vo2AtVel の2次式を正の解で解く */
+function velAtVo2(vo2) {
+  const a = 0.000104, b = 0.182258, c = -4.60 - vo2;
+  const dsc = b * b - 4 * a * c;
+  return dsc > 0 ? (-b + Math.sqrt(dsc)) / (2 * a) : 0;
+}
+const velAtPct = (vdot, pct) => velAtVo2(vdot * pct);
+/* 強度ゾーン(VO2max に対する割合) */
+const RZONE = [
+  [1.00, "R", "レペティション", "var(--crit)"],
+  [0.95, "I", "インターバル", "var(--s1)"],
+  [0.86, "T", "閾値(テンポ)", "var(--warn)"],
+  [0.75, "M", "マラソン", "var(--s2)"],
+  [0.00, "E", "イージー", "var(--s3)"]
+];
+const zoneOf = pct => RZONE.find(z => pct >= z[0]);
+/* VDOT から距離 km のレース予測タイム(秒)。二分法で解く */
+function raceSec(vdot, km) {
+  if (!(vdot > 0) || !(km > 0)) return 0;
+  let lo = 0.5, hi = 900;
+  for (let i = 0; i < 70; i++) {
+    const t = (lo + hi) / 2;
+    if (vo2AtVel((km * 1000) / t) > vdot * pctAtMin(t)) lo = t; else hi = t;
+  }
+  return Math.round(((lo + hi) / 2) * 60);
+}
+/* 秒 → 0:00 / 0:00:00 */
+function hms(sec) {
+  const t = Math.round(num(sec));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), x = t % 60;
+  return h ? `${h}:${P2(m)}:${P2(x)}` : `${m}:${P2(x)}`;
+}
+const paceSec = (km, sec) => (km > 0 ? sec / km : 0);   /* 1km あたりの秒 */
+
+/* 1本ぶんの計算。e = {km, sec, g(勾配%)} */
+function runCalc(e, w) {
+  const km = num(e.km), sec = num(e.sec), gp = num(e.g), g = gp / 100;
+  if (!(km > 0) || !(sec > 0)) return { ok: false, km, sec, min: sec / 60, kcal: 0, steps: 0, met: 0, g: gp };
+  const min = sec / 60, ms = (km * 1000) / sec, isRun = ms >= 2.0;
+  const vo2 = isRun ? vo2Run(ms, g) : vo2Walk(ms, g);
   return {
-    kcal: kcalVo2(vo2, w, min), met: vo2 / 3.5, run,
-    steps: Math.round((run ? 168 : walkCad(ms)) * min),
-    dist: (ms * 60 * min) / 1000
+    ok: true, km, sec, min, ms, g: gp, isRun,
+    kmh: ms * 3.6, pace: paceSec(km, sec),
+    vo2, met: vo2 / 3.5,
+    kcal: kcalVo2(vo2, w, min),
+    steps: Math.round((isRun ? 168 : walkCad(ms)) * min),
+    vdot: vdotOf(km, sec)
   };
+}
+
+/* 期間全体の集計。走力(VDOT)・負荷・ACWR をまとめて出す。
+   VDOT は「直近42日で一番良かった走り」を採用する。ゆっくり走っただけの日に
+   走力が下がったことにならないよう、最大値を取る。                      */
+let _rsCache = null, _rsStamp = -1;
+function runStats() {
+  if (_rsStamp === DATA_STAMP) return _rsCache;
+  const all = [];
+  for (const k of Object.keys(S.days).sort()) {
+    if (k > TODAY) continue;
+    const w = weightAt(k);
+    (S.days[k].run || []).forEach((e, i) => {
+      const r = runCalc(e, w);
+      if (r.ok) all.push(Object.assign({ k, i }, r));
+    });
+  }
+  const d42 = addD(TODAY, -41), d7 = addD(TODAY, -6), d28 = addD(TODAY, -27);
+  let vdot = 0, best = null;
+  for (const r of all) if (r.k >= d42 && r.sec >= 300 && r.vdot > vdot) { vdot = r.vdot; best = r; }
+  const vT = vdot > 0 ? velAtPct(vdot, 0.88) : 0;   /* 閾値ペースの速度(m/分) */
+  let km7 = 0, km28 = 0, tss7 = 0, tss28 = 0, n7 = 0, kcal7 = 0;
+  all.forEach((r, idx) => {
+    const v = (r.km * 1000) / r.min;
+    r.pct = vdot > 0 ? vo2AtVel(v) / vdot : 0;
+    r.zone = vdot > 0 ? zoneOf(r.pct) : null;
+    /* 負荷スコア: 閾値ペースで1時間 = 100。(ランニング版TSSと同じ考え方) */
+    r.tss = vT > 0 ? (r.sec / 3600) * Math.pow(v / vT, 2) * 100 : 0;
+    r.prev = idx > 0 ? all[idx - 1] : null;
+    if (r.k >= d7) { km7 += r.km; tss7 += r.tss; n7++; kcal7 += r.kcal; }
+    if (r.k >= d28) { km28 += r.km; tss28 += r.tss; }
+  });
+  _rsCache = {
+    all, vdot, best, vT, km7, km28, tss7, tss28, n7, kcal7,
+    acwr: tss28 > 0 ? tss7 / (tss28 / 4) : 0,
+    last: all.length ? all[all.length - 1] : null
+  };
+  _rsStamp = DATA_STAMP;
+  return _rsCache;
+}
+/* その日のランニング合計 */
+function runOfDay(k, w) {
+  const rs = (S.days[k] ? S.days[k].run || [] : []).map(e => runCalc(e, w)).filter(r => r.ok);
+  const km = rs.reduce((a, r) => a + r.km, 0);
+  const sec = rs.reduce((a, r) => a + r.sec, 0);
+  const kcal = rs.reduce((a, r) => a + r.kcal, 0);
+  const steps = rs.reduce((a, r) => a + r.steps, 0);
+  return { rs, n: rs.length, km, sec, kcal, steps, min: sec / 60, pace: paceSec(km, sec) };
 }
 function actSteps(a) {
   if (!a.amb) return 0;
@@ -2404,7 +2520,8 @@ function calc(k) {
 
   const bmr = bmrOf(w, k), base = bmr * S.set.life;
   let incK = 0, incSteps = 0, incMin = 0, incDist = 0;
-  for (const e of d.inc) { const r = incCalc(e, w); incK += r.kcal; incSteps += r.steps; incMin += num(e.min); incDist += r.dist; }
+  const runs = (d.run || []).map(e => runCalc(e, w)).filter(r => r.ok);
+  for (const r of runs) { incK += r.kcal; incSteps += r.steps; incMin += r.min; incDist += r.km; }
   /* --- トレーニングの消費 ---
      種目ごとの METs(筋量の大きさ)を時間で重みづけしたものを土台にして、
      「どれだけ密に詰めたか」で強度を上下させる。
@@ -2428,7 +2545,7 @@ function calc(k) {
   let actK = 0, aSteps = 0, actMin = 0;
   for (const a of d.acts) { actK += kcalMet(num(a.met), w, num(a.min)); aSteps += actSteps(a); actMin += num(a.min); }
 
-  /* 歩数の二重計上補正: 傾斜ウォークと歩行系の運動で稼いだ推定歩数を引く */
+  /* 歩数の二重計上補正: ランニングと歩行系の運動で稼いだ推定歩数を引く */
   const dup = incSteps + aSteps;
   const eff = Math.max(0, num(d.steps) - dup);
   const stepMin = eff / S.set.cadence;
@@ -2447,6 +2564,7 @@ function calc(k) {
     stepK, incK, liftK, actK, tef, burn, net: kcal - burn,
     rawSteps: num(d.steps), dup, eff, stepMin, incSteps, aSteps,
     vol, liftMin, liftReps, liftSets, liftDrops, actMin, incMin, incDist,
+    runs, runN: runs.length, runPace: paceSec(incDist, incMin * 60),
     trainMin: num(d.trainMin), estMin, liftMet: liftSets ? effNet + 1 : 0, density,
     isTrain: d.td == null ? d.lifts.length > 0 : !!d.td,
     logged: hasData(d)
@@ -2813,8 +2931,8 @@ function vDay() {
           ${c.kcal > t.kcal + 60 ? IC.warn : IC.ok}摂取目標 ${fmt(t.kcal)} / ${signed(c.kcal - t.kcal)}</span>
         <span class="chip ${gapBurn > 120 ? "warn" : "good"}">${gapBurn > 120 ? IC.warn : IC.ok}消費目標 ${fmt(t.burn)} / ${signed(c.burn - t.burn)}</span>
       </div>
-      ${gapBurn > 60 ? `<div class="note">消費目標まで <b>${fmt(gapBurn)} kcal</b>。歩くなら約 <b>${needSteps.toLocaleString("ja-JP")}歩</b>、勾配10%・5.0km/hの傾斜ウォークなら約 <b>${r0(gapBurn / Math.max(0.1, kcalVo2(vo2Walk(1.4, 0.10), c.w, 1)))}分</b>。</div>` : ""}
-      <div class="sub">内訳 — 基礎代謝×生活係数 ${fmt(c.base)} / 歩数 ${fmt(c.stepK)} / 傾斜 ${fmt(c.incK)} / トレ ${fmt(c.liftK)} / 運動 ${fmt(c.actK)}${S.set.tef ? ` / 食事誘発 ${fmt(c.tef)}` : ""}</div>
+      ${gapBurn > 60 ? `<div class="note">消費目標まで <b>${fmt(gapBurn)} kcal</b>。歩くなら約 <b>${needSteps.toLocaleString("ja-JP")}歩</b>、キロ6:00のランニングなら約 <b>${r0(gapBurn / Math.max(0.1, kcalVo2(vo2Run(10 / 3.6, 0), c.w, 1)))}分</b>。</div>` : ""}
+      <div class="sub">内訳 — 基礎代謝×生活係数 ${fmt(c.base)} / 歩数 ${fmt(c.stepK)} / ラン ${fmt(c.incK)} / トレ ${fmt(c.liftK)} / 運動 ${fmt(c.actK)}${S.set.tef ? ` / 食事誘発 ${fmt(c.tef)}` : ""}</div>
     </div>
   </div>
 
@@ -2937,10 +3055,12 @@ function vMove() {
     <div class="row wrap" style="gap:7px">
       <span class="chip s2"><b class="mono">${fmt(c.stepK + c.incK + c.actK)}</b> kcal</span>
       <span class="chip"><b class="mono">${c.eff.toLocaleString("ja-JP")}</b> 純歩数</span>
-      ${c.incMin ? `<span class="chip s1">傾斜 ${r0(c.incMin)}分</span>` : ""}
+      ${c.incDist ? `<span class="chip s1">ラン ${r1(c.incDist)}km · ${hms(c.runPace)}/km</span>` : ""}
       ${c.actMin ? `<span class="chip s3">運動 ${r0(c.actMin)}分</span>` : ""}
     </div>
   </div></div>
+  ${runCard(d, c)}
+  ${runDash()}
   ${stepCard(d, c)}
   ${actCard(d, c)}
   <button class="btn pri blk press" data-act="back" style="margin-top:4px">${IC.ok}完了</button>`;
@@ -3049,8 +3169,8 @@ function mealCard(d, c) {
 /* ------------------------------------------------------------------ 歩数 */
 function stepCard(d, c) {
   return `<div class="card">
-    <div class="card-h"><span class="card-t">歩数・傾斜ウォーク</span><span class="sp"></span>
-      <span class="sub mono">${fmt(c.stepK + c.incK)} kcal</span></div>
+    <div class="card-h"><span class="card-t">歩数</span><span class="sp"></span>
+      <span class="sub mono">${fmt(c.stepK)} kcal</span></div>
     <div class="card-b">
       <div class="grid2">
         <div class="fld"><label for="stIn">歩数(万歩計の値)</label>
@@ -3058,18 +3178,7 @@ function stepCard(d, c) {
         <div class="fld"><label>純歩数(補正後)</label>
           <div class="inp mono n" style="background:var(--surf3);border-style:dashed">${c.eff.toLocaleString("ja-JP")}</div></div>
       </div>
-      ${c.dup ? `<div class="note w" style="margin-top:9px">${IC.warn} 傾斜ウォーク・歩行系の運動で <b>約${c.dup.toLocaleString("ja-JP")}歩</b>ぶんが重複するため差し引いています(ランニング等の二重計上防止)。</div>` : ""}
-      <div class="slot-h">傾斜ウォーク<span class="ln"></span>
-        <button class="btn sm add" data-act="addInc">${IC.plus}追加</button></div>
-      ${d.inc.length ? d.inc.map((e, i) => {
-    const r = incCalc(e, c.w), kmh = r1(ms2kmh(e.sp));
-    return `<div class="li">
-          <div class="body"><div class="t1">勾配 ${r1(e.g)}% · ${kmh} km/h · ${r0(e.min)}分</div>
-            <div class="t2">キロ${paceStr(kmh)} · ${r1(r.dist)} km · ${r1(r.met)} METs · 推定${r.steps.toLocaleString("ja-JP")}歩${r.run ? " · 走行式" : ""}</div></div>
-          <div class="r"><div class="a">${fmt(r.kcal)}</div><div class="b">kcal</div></div>
-          <button class="x" data-act="delInc" data-i="${i}" aria-label="削除">${IC.x}</button>
-        </div>`;
-  }).join("") : '<div class="empty">テクノジムの表示値(勾配%・速度km/h)をそのまま入れてください</div>'}
+      ${c.dup ? `<div class="note w" style="margin-top:9px">${IC.warn} ランニング・歩行系の運動で <b>約${c.dup.toLocaleString("ja-JP")}歩</b>ぶんが万歩計と重複するため差し引いています。</div>` : ""}
     </div>
   </div>`;
 }
@@ -3229,7 +3338,7 @@ function chartSvg(cfg) {
   for (let i = 0; i <= TN; i++) {
     const v = lo + ((hi - lo) * i) / TN;
     ticks.push(`<line class="gridline" x1="${PL}" y1="${Y(v).toFixed(1)}" x2="${PL + pw}" y2="${Y(v).toFixed(1)}"/>
-      <text class="tick" x="${PL - 6}" y="${(Y(v) + 3.4).toFixed(1)}" text-anchor="end">${cfg.type === "line" ? r1(v) : fmt(v)}</text>`);
+      <text class="tick" x="${PL - 6}" y="${(Y(v) + 3.4).toFixed(1)}" text-anchor="end">${cfg.fy ? cfg.fy(v) : cfg.type === "line" ? r1(v) : fmt(v)}</text>`);
   }
 
   let marks = "";
@@ -3315,7 +3424,7 @@ function chartCard(cfg, legend) {
 function chartTable(cfg) {
   return `<div class="tblwrap"><table class="dt"><thead><tr><th>日付</th>
     ${cfg.series.map(s => `<th>${esc(s.label)}</th>`).join("")}</tr></thead><tbody>
-    ${cfg.labels.map((l, i) => `<tr><td>${esc(l)}</td>${cfg.series.map(s => `<td>${s.data[i] == null ? "—" : (cfg.type === "line" ? r1(s.data[i]) : fmt(s.data[i]))}</td>`).join("")}</tr>`).join("")}
+    ${cfg.labels.map((l, i) => `<tr><td>${esc(l)}</td>${cfg.series.map(s => `<td>${s.data[i] == null ? "—" : cfg.fy ? cfg.fy(s.data[i]) : (cfg.type === "line" ? r1(s.data[i]) : fmt(s.data[i]))}</td>`).join("")}</tr>`).join("")}
     </tbody></table></div>`;
 }
 function bindCharts() {
@@ -3330,7 +3439,7 @@ function bindCharts() {
       const hb = hit.getBoundingClientRect(), wb = wrap.getBoundingClientRect();
       if (!tip) { tip = document.createElement("div"); tip.className = "tip"; wrap.appendChild(tip); }
       tip.innerHTML = `<div class="d">${esc(cfg.labels[i])}</div>` +
-        cfg.series.filter(s => !s.hide).map(s => `<div class="r"><span class="n">${SW(s.color)}${esc(s.label)}</span><span class="v">${s.data[i] == null ? "—" : (cfg.type === "line" ? r1(s.data[i]) : fmt(s.data[i])) + (cfg.unit || "")}</span></div>`).join("");
+        cfg.series.filter(s => !s.hide).map(s => `<div class="r"><span class="n">${SW(s.color)}${esc(s.label)}</span><span class="v">${s.data[i] == null ? "—" : (cfg.fy ? cfg.fy(s.data[i]) : cfg.type === "line" ? r1(s.data[i]) : fmt(s.data[i])) + (cfg.unit || "")}</span></div>`).join("");
       const cx = hb.left - wb.left + hb.width / 2;
       tip.style.left = Math.max(2, Math.min(wrap.clientWidth - tip.offsetWidth - 2, cx - tip.offsetWidth / 2)) + "px";
       tip.style.top = "2px";
@@ -3508,10 +3617,10 @@ function review(keys, minN) {
     const dB = T.burn - A.burn;
     if (sFreq < 60) M(lv(sFreq), `トレ頻度が週 ${r1(freqA)} 回(目標 ${freqT} 回)。減量中の筋量維持は「刺激の頻度」で決まる部分が大きいので、1回を長くするより回数を戻す方が効きます。`);
     if (dB > 120) {
-      /* 埋め方は歩数と傾斜ウォークの両方で出す。歩数だけだと非現実的な数字になりやすい */
+      /* 埋め方は歩数とランニングの両方で出す。歩数だけだと非現実的な数字になりやすい */
       const addStep = (dB / kcalVo2(vo2Walk(S.set.stepSpeed, 0), w, 60 / S.set.cadence)) * 60;
-      const incMin = dB / Math.max(1, kcalVo2(vo2Walk(1.53, 0.10), w, 1));
-      M(lv(sBurn), `消費が目標より1日 ${fmt(dB)}kcal 少なめ。歩数を1日 ${fmt(addStep)} 歩(約 ${r0(addStep / S.set.cadence)} 分の歩行)増やすか、傾斜ウォーク(勾配10%・5.5km/h)を ${r0(incMin)} 分足すと埋まります。食事を削らずに赤字を作れるぶんです。`);
+      const incMin = dB / Math.max(1, kcalVo2(vo2Run(10 / 3.6, 0), w, 1));
+      M(lv(sBurn), `消費が目標より1日 ${fmt(dB)}kcal 少なめ。歩数を1日 ${fmt(addStep)} 歩(約 ${r0(addStep / S.set.cadence)} 分の歩行)増やすか、ランニング(キロ6:00)を ${r0(incMin)} 分足すと埋まります。食事を削らずに赤字を作れるぶんです。`);
     }
     else if (sMove >= 78) M("good", `トレ・運動量は十分(平均消費 ${fmt(A.burn)}kcal / 目標 ${fmt(T.burn)}kcal・トレ週 ${r1(freqA)} 回)。運動側で赤字を作れているので、食事を無理に削らずに済んでいます。`);
   }
@@ -3708,7 +3817,58 @@ function vChart() {
     id: "step", title: "歩数(補正後の純歩数)", type: "group", unit: " 歩",
     aria: "日別の歩数", labels: lab, short: shrt, h: 120,
     series: [{ label: "純歩数", color: "var(--s2)", data: gv(c => c.eff) }]
-  }, false)}`;
+  }, false)}
+  ${runCharts(keys, lab, shrt)}`;
+}
+
+/* ランニングのグラフ。走った日が無い期間では何も出さない。
+   ペースは「小さいほど速い」ので、軸をそのまま使うと下に伸びるほど速くなる。
+   読み違えないよう、凡例に明記して分で表示する。                        */
+function runCharts(keys, lab, shrt) {
+  const st = runStats();
+  const by = keys.map(k => {
+    const rs = st.all.filter(r => r.k === k);
+    if (!rs.length) return null;
+    const km = rs.reduce((a, r) => a + r.km, 0);
+    const sec = rs.reduce((a, r) => a + r.sec, 0);
+    return { km, sec, pace: paceSec(km, sec), tss: rs.reduce((a, r) => a + r.tss, 0),
+      kcal: rs.reduce((a, r) => a + r.kcal, 0) };
+  });
+  if (!by.some(Boolean)) return "";
+  const pick = f => by.map((b, i) => (b && keys[i] <= TODAY ? f(b) : null));
+  const total = by.filter(Boolean).reduce((a, b) => ({ km: a.km + b.km, sec: a.sec + b.sec,
+    tss: a.tss + b.tss, kcal: a.kcal + b.kcal }), { km: 0, sec: 0, tss: 0, kcal: 0 });
+  const hasTss = by.some(b => b && b.tss > 0);
+  return `
+  <div class="card"><div class="card-b">
+    <div class="mstat">
+      <div class="b"><div class="k">走った日</div><div class="v">${by.filter(Boolean).length}<small> 日</small></div></div>
+      <div class="b"><div class="k">合計距離</div><div class="v">${r1(total.km)}<small> km</small></div></div>
+      <div class="b"><div class="k">平均ペース</div><div class="v" style="font-size:19px">${total.km > 0 ? hms(total.sec / total.km) : "—"}<small> /km</small></div></div>
+      <div class="b"><div class="k">消費</div><div class="v">${fmt(total.kcal)}<small> kcal</small></div></div>
+    </div>
+  </div></div>
+
+  ${chartCard({
+    id: "runkm", title: "ランニング距離", type: "group", unit: " km",
+    aria: "日別の走行距離", labels: lab, short: shrt, h: 130,
+    series: [{ label: "距離", color: "var(--s2)", data: pick(b => r1(b.km)) }]
+  }, false)}
+
+  ${chartCard({
+    id: "runpace", title: "ペース (1kmあたり)", type: "line", unit: "/km",
+    aria: "日別の平均ペース", labels: lab, short: shrt, h: 130,
+    fy: v => hms(v),
+    legend: `<span class="it">${SW("var(--s1)")}<b>下へ行くほど速い</b>(1kmにかかる時間)</span>`,
+    series: [{ label: "ペース", color: "var(--s1)", data: pick(b => Math.round(b.pace)) }]
+  }, false)}
+
+  ${hasTss ? chartCard({
+    id: "runtss", title: "ランニングの負荷", type: "group", unit: "",
+    aria: "日別のランニング負荷", labels: lab, short: shrt, h: 120,
+    legend: `<span class="it">${SW("var(--s3)")}閾値ペースで1時間 = 100</span>`,
+    series: [{ label: "負荷", color: "var(--s3)", data: pick(b => r0(b.tss)) }]
+  }, false) : ""}`;
 }
 
 /* ============================================================== 目標ビュー */
@@ -4048,7 +4208,7 @@ function vSet() {
         現在の推定 — 基礎代謝 <b>${fmt(bmrOf(w))} kcal</b> ×${r1(st.life)} = <b>${fmt(bmrOf(w) * st.life)} kcal</b>
         <span style="color:var(--muted)">(${st.bmrF === "katch" ? (bfAt(TODAY) > 0 ? "除脂肪 " + r1(w * (1 - bfAt(TODAY) / 100)) + "kg から算出" : "体脂肪率の記録が無いので Mifflin で代用中") : st.bmrF === "ganpule" ? "身長・体重・年齢から" : "身長・体重・年齢から"})</span>。
         食事誘発性熱産生は栄養素ごと(P 25% / C 7.5% / F 2%)に計算しています。
-        歩数・傾斜ウォーク・トレ・運動はここに<b>安静分を差し引いた純消費</b>として加算されるので、二重計上しません。<br>
+        歩数・ランニング・トレ・運動はここに<b>安静分を差し引いた純消費</b>として加算されるので、二重計上しません。<br>
         セット間の休憩は種目ごとに倍率がかかります — 高重量の多関節(スクワット等)は<b>×2</b>、
         通常の多関節(ベンチ等)は<b>×1.35</b>、単関節(レイズ等)は<b>×0.7</b>、自重の高強度は<b>×0.9</b>。
       </div>
@@ -4079,9 +4239,10 @@ function vSet() {
       <button class="btn sm gh" data-act="newMyFood">${IC.plus}登録</button></div>
     <div class="card-b tight">
       ${S.my.length ? S.my.map((f, i) => `<div class="li">
-        <div class="body"><div class="t1">${esc(f.n)}</div>
+        <div class="body" data-act="editMyFood" data-i="${i}" style="cursor:pointer"><div class="t1">${esc(f.n)}</div>
           <div class="t2">${f.c === "直接入力" ? "1食分" : "100gあたり"} ${fmt(f.kcal)}kcal · P${r1(f.p)} F${r1(f.f)} C${r1(f.cb)}${f.c !== "直接入力" && f.u && f.u.length ? " · " + f.u.map(u => u[0] + "=" + u[1] + "g").join(" ") : ""}${f.c === "直接入力" ? " · 直接入力から自動登録" : ""}</div></div>
-        <button class="x" data-act="delMyFood" data-i="${i}" aria-label="削除">${IC.x}</button></div>`).join("")
+        <button class="x e" data-act="editMyFood" data-i="${i}" aria-label="${esc(f.n)}を編集">${IC.pen}</button>
+        <button class="x" data-act="delMyFood" data-i="${i}" aria-label="${esc(f.n)}を削除">${IC.x}</button></div>`).join("")
       : '<div class="empty">商品パッケージの成分表から登録すると、次から単位で呼び出せます</div>'}
     </div>
   </div>
@@ -4114,7 +4275,9 @@ function vSet() {
         運動のMETs … Compendium of Physical Activities (2011) を基準に${SPORTS.length}項目 / 筋トレ${LIFTS.length}種目<br>
         歩行・走行・傾斜 … ACSM代謝計算式 (歩行 VO₂=0.1S+1.8SG+3.5 / 走行 VO₂=0.2S+0.9SG+3.5、S=m/分)<br>
         体脂肪 … 1kg = 7,200 kcal で換算<br>
-        傾斜ウォークは速度 7.2 km/h 以上で走行式に自動で切り替わります。速度は画面上は km/h、内部計算は m/s です。
+        ランニングは速度 7.2 km/h(キロ8:20)以上で走行式に自動で切り替わります。勾配を入れればトレッドミルの傾斜にも対応します。<br>
+        走力 … Daniels &amp; Gilbert の VDOT (VO₂ = -4.60 + 0.182258V + 0.000104V², V = m/分)。直近42日で最良の走りから算出<br>
+        負荷 … 閾値ペース(VDOT の88%)で1時間走ると 100。ACWR = 直近7日 ÷ 直近28日の平均週負荷
       </div>
       <div class="note" style="margin-top:11px">
         バージョン <b class="mono">${APP_VER}</b> ／ 保存キー <span class="mono">${LSK}</span><br>
@@ -4474,48 +4637,240 @@ function sheetAct() {
   });
 }
 
-/* ------------------------------------------------------------ 傾斜ウォーク */
-function sheetInc() {
+/* ------------------------------------------------------------ ランニング */
+/* 距離 + 「時間」または「ペース」で入れる。保存はどちらでも {km, sec, g}。 */
+function sheetRun(idx) {
+  const ex = idx != null ? day(CUR).run[idx] : null;
+  const p0 = ex ? paceSec(num(ex.km), num(ex.sec)) : 330;
   openSheet({
-    title: "傾斜ウォークを追加", g: 10, sp: 6.0, min: 30,   /* sp は km/h */
-    body() {
-      const w = weightAt(CUR), r = incCalc({ g: this.g, sp: kmh2ms(this.sp), min: this.min }, w);
-      return `<div class="grid3">
-          <div class="fld"><label for="ig">勾配 (%)</label><input id="ig" data-first class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" max="40" value="${this.g}" data-inc="g"></div>
-          <div class="fld"><label for="isp">速度 (km/h)</label><input id="isp" class="inp mono n" type="number" inputmode="decimal" step="0.1" min="1" max="25" value="${this.sp}" data-inc="sp"></div>
-          <div class="fld"><label for="im">時間 (分)</label><input id="im" class="inp mono n" type="number" inputmode="numeric" step="1" min="1" value="${this.min}" data-inc="min"></div>
-        </div>
-        <div class="note" style="margin-top:11px" data-incprev>
-          キロ${paceStr(this.sp)} のペース · 距離 ${r1(r.dist)} km · ${r1(r.met)} METs · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>
-          推定消費 <b>${fmt(r.kcal)} kcal</b>(${r.run ? "走行式" : "歩行式"}・安静分を除いた純消費)
-        </div>
-        <div class="note" style="margin-top:9px">テクノジムのコンソールに出ている勾配と速度をそのまま入れてください。速度が <b>7.2 km/h</b>(キロ8:20)以上になると走行の式に切り替わります。</div>`;
+    title: ex ? "ランニングを編集" : "ランニングを追加",
+    idx, mode: "time",
+    v: ex ? { km: ex.km, sec: ex.sec, g: ex.g || 0 } : { km: 5, sec: 1650, g: 0 },
+    pull() {
+      const h = document.getElementById("sheetHost");
+      if (!h) return;
+      const g = k => { const e = h.querySelector(`[data-rn="${k}"]`); return e ? num(e.value) : 0; };
+      this.v.km = g("km");
+      this.v.g = g("g");
+      this.v.sec = this.mode === "pace"
+        ? Math.round((g("pm") * 60 + g("ps")) * this.v.km)
+        : Math.round(g("tm") * 60 + g("ts"));
     },
-    foot() { return `<button class="btn gh" data-act="closeSheet">やめる</button><button class="btn pri" data-act="saveInc">追加する</button>`; }
+    prev() {
+      const w = weightAt(CUR), r = runCalc(this.v, w), st = runStats();
+      if (!r.ok) return "距離と時間を入れてください。";
+      const z = st.vdot > 0 ? zoneOf(vo2AtVel((r.km * 1000) / r.min) / st.vdot) : null;
+      const pc = st.vdot > 0 ? vo2AtVel((r.km * 1000) / r.min) / st.vdot : 0;
+      const tss = st.vT > 0 ? (r.sec / 3600) * Math.pow(((r.km * 1000) / r.min) / st.vT, 2) * 100 : 0;
+      return `ペース <b>${hms(r.pace)}/km</b> · ${r1(r.kmh)} km/h · ${r1(r.met)} METs · ${hms(r.sec)}<br>
+        推定消費 <b>${fmt(r.kcal)} kcal</b>(安静分を除いた純消費) · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>
+        ${z ? `強度 <b style="color:${z[3]}">${z[1]} ${z[2]}</b> · VO₂max の ${r0(pc * 100)}% · 負荷 <b>${r0(tss)}</b><br>` : ""}
+        この走りの VDOT <b>${r1(r.vdot)}</b>${st.vdot > 0 ? ` (いまの走力 ${r1(st.vdot)})` : ""}`;
+    },
+    body() {
+      const pm = Math.floor(p0 / 60), ps = Math.round(p0 % 60);
+      const tm = Math.floor(this.v.sec / 60), ts = Math.round(this.v.sec % 60);
+      const pace = paceSec(this.v.km, this.v.sec);
+      return `<div class="fld"><label>入力のしかた</label>
+          <div class="pills">
+            <button class="pill" data-act="rnMode" data-v="time" aria-pressed="${this.mode === "time"}">距離＋時間</button>
+            <button class="pill" data-act="rnMode" data-v="pace" aria-pressed="${this.mode === "pace"}">距離＋ペース</button>
+          </div></div>
+
+        <div class="fld" style="margin-top:12px"><label for="rk">距離 (km)</label>
+          <input id="rk" data-first class="inp mono n" type="number" inputmode="decimal" step="0.1" min="0" value="${this.v.km}" data-rn="km"></div>
+
+        ${this.mode === "time"
+        ? `<div class="fld" style="margin-top:11px"><label>かかった時間</label>
+            <div class="row" style="gap:7px">
+              <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" value="${tm}" data-rn="tm" style="flex:1;min-width:0">
+              <span style="color:var(--muted);font-weight:700">分</span>
+              <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" max="59" value="${ts}" data-rn="ts" style="flex:1;min-width:0">
+              <span style="color:var(--muted);font-weight:700">秒</span>
+            </div></div>`
+        : `<div class="fld" style="margin-top:11px"><label>ペース (1kmあたり)</label>
+            <div class="row" style="gap:7px">
+              <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" value="${Math.floor(pace / 60)}" data-rn="pm" style="flex:1;min-width:0">
+              <span style="color:var(--muted);font-weight:700">分</span>
+              <input class="inp mono n" type="number" inputmode="numeric" step="1" min="0" max="59" value="${Math.round(pace % 60)}" data-rn="ps" style="flex:1;min-width:0">
+              <span style="color:var(--muted);font-weight:700">秒</span>
+            </div></div>`}
+
+        <div class="fld" style="margin-top:11px"><label for="rg">勾配 (%) — トレッドミルのとき</label>
+          <input id="rg" class="inp mono n" type="number" inputmode="decimal" step="0.5" min="0" max="40" value="${this.v.g}" data-rn="g"></div>
+
+        <div class="note" style="margin-top:12px" data-rnprev>${this.prev()}</div>`;
+    },
+    foot() {
+      return `<button class="btn gh" data-act="closeSheet">やめる</button>
+        ${this.idx != null ? `<button class="btn dg" data-act="delRun2">削除</button>` : ""}
+        <button class="btn pri" data-act="saveRun">${this.idx != null ? "保存する" : "追加する"}</button>`;
+    }
   });
 }
 
+/* ------------------------------------------- ランニングのカード(運動ページ) */
+function runCard(d, c) {
+  const st = runStats(), rs = d.run || [];
+  return `<div class="card">
+    <div class="card-h"><span class="card-t">ランニング</span><span class="sp"></span>
+      <span class="sub mono">${c.incDist ? r1(c.incDist) + " km · " : ""}${fmt(c.incK)} kcal</span></div>
+    <div class="card-b tight">
+      <div class="slot-h">この日の走り<span class="ln"></span>
+        <button class="btn sm add" data-act="addRun">${IC.plus}追加</button></div>
+      ${rs.length ? rs.map((e, i) => {
+        const r = runCalc(e, c.w);
+        if (!r.ok) return "";
+        const rec = st.all.find(x => x.k === CUR && x.i === i);
+        const pv = rec && rec.prev ? rec.prev : null;
+        const dp = pv ? rec.pace - pv.pace : 0;      /* 秒/km。マイナスが速い */
+        return `<div class="li">
+          <div class="body" data-act="editRun" data-i="${i}" style="cursor:pointer">
+            <div class="t1">${r1(r.km)} km · ${hms(r.sec)}<span style="color:var(--s2)"> · ${hms(r.pace)}/km</span></div>
+            <div class="t2">${r1(r.met)} METs${r.g ? ` · 勾配${r1(r.g)}%` : ""}${rec && rec.zone ? ` · <b style="color:${rec.zone[3]}">${rec.zone[1]} ${rec.zone[2]}</b>` : ""}${rec && rec.tss ? ` · 負荷${r0(rec.tss)}` : ""}${pv ? ` · 前回比 <b style="color:${dp < -2 ? "var(--good)" : dp > 2 ? "var(--crit)" : "var(--muted)"}">${dp < 0 ? "−" : dp > 0 ? "+" : "±"}${hms(Math.abs(dp))}/km</b>` : ""}</div></div>
+          <div class="r"><div class="a">${fmt(r.kcal)}</div><div class="b">kcal</div></div>
+          <button class="x e" data-act="editRun" data-i="${i}" aria-label="編集">${IC.pen}</button>
+          <button class="x" data-act="delRun" data-i="${i}" aria-label="削除">${IC.x}</button>
+        </div>`;
+      }).join("") : '<div class="empty">距離と時間を入れるだけ。ペースと消費は自動で出ます</div>'}
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------- 走力ダッシュボード */
+function runDash() {
+  const st = runStats();
+  if (!st.all.length) return "";
+  const RACE = [[5, "5km"], [10, "10km"], [21.0975, "ハーフ"], [42.195, "フル"]];
+  const PACE = [["E", "イージー", 0.70], ["M", "マラソン", 0.80], ["T", "閾値", 0.88],
+                ["I", "インターバル", 0.98], ["R", "レペティション", 1.10]];
+  const a = st.acwr;
+  const ac = a === 0 ? ["—", "var(--muted)", "28日ぶんの記録がたまると出ます"]
+    : a < 0.8 ? [r1(a), "var(--s3)", "直近が軽め。増やす余地があります"]
+    : a <= 1.3 ? [r1(a), "var(--good)", "ちょうどいい増やし方です"]
+    : a <= 1.5 ? [r1(a), "var(--warn)", "やや増やしすぎ。1週ゆるめると安全です"]
+    : [r1(a), "var(--crit)", "増やしすぎ。故障が出やすい領域です"];
+  return `<div class="card pop2">
+    <div class="card-h"><span class="card-t">走力と負荷</span><span class="sp"></span>
+      <span class="chip s2">直近42日の最良から算出</span></div>
+    <div class="card-b">
+      <div class="mstat">
+        <div class="b"><div class="k">VDOT (推定VO₂max)</div><div class="v">${st.vdot > 0 ? r1(st.vdot) : "—"}</div></div>
+        <div class="b"><div class="k">7日の距離</div><div class="v">${r1(st.km7)}<small> km</small></div></div>
+        <div class="b"><div class="k">7日の負荷</div><div class="v">${r0(st.tss7)}</div></div>
+        <div class="b"><div class="k">ACWR</div><div class="v" style="color:${ac[1]}">${ac[0]}</div></div>
+      </div>
+      <div class="sub" style="margin-top:8px">ACWR = 直近7日の負荷 ÷ 直近28日の平均週負荷。<b style="color:${ac[1]}">${ac[2]}</b></div>
+      ${st.vdot > 0 ? `
+      <div class="slot-h" style="margin-top:14px">練習ペースの目安<span class="ln"></span></div>
+      <div class="tblwrap"><table class="dt"><thead><tr><th>ゾーン</th><th>ペース</th><th>VO₂max比</th></tr></thead><tbody>
+        ${PACE.map(([z, nm, p]) => {
+          const v = velAtPct(st.vdot, p);
+          return `<tr><td>${z} ${nm}</td><td>${hms(60000 / v)}/km</td><td>${r0(p * 100)}%</td></tr>`;
+        }).join("")}
+      </tbody></table></div>
+      <div class="slot-h" style="margin-top:14px">いまの走力でのレース予測<span class="ln"></span></div>
+      <div class="tblwrap"><table class="dt"><thead><tr><th>距離</th><th>予測タイム</th><th>ペース</th></tr></thead><tbody>
+        ${RACE.map(([km, nm]) => {
+          const t = raceSec(st.vdot, km);
+          return `<tr><td>${nm}</td><td>${hms(t)}</td><td>${hms(t / km)}/km</td></tr>`;
+        }).join("")}
+      </tbody></table></div>
+      <p class="fine">VDOT は Daniels & Gilbert の式で、走った距離とタイムから逆算した実効 VO₂max です。全力に近い走りほど正確になります(5分未満の走りは除外)。練習ペース・レース予測はすべてこの1つの数字から出しています。</p>
+      ` : `<div class="note" style="margin-top:11px">5分以上の走りを1本記録すると、走力(VDOT)・練習ペース・レース予測が出ます。</div>`}
+    </div>
+  </div>`;
+}
+
 /* -------------------------------------------------------------- マイ食品 */
-function sheetMyFood() {
+/* マイ食品の登録と編集。
+   入力は「100gあたり」と「1食あたり」を選べる。保存は常に100g換算＋単位で持つので、
+   選択画面のグラム入力・単位ピルの仕組みをそのまま使える。 */
+function sheetMyFood(idx) {
+  const ex = idx != null ? S.my[idx] : null;
+  const u0 = ex && ex.u && ex.u.length ? ex.u[0] : null;
   openSheet({
-    title: "マイ食品を登録",
-    body() {
-      return `<div class="sub" style="margin-bottom:11px">パッケージの成分表を見て、<b>100gあたり</b>の値を入れてください。単位を登録すると次から「1枚」で呼び出せます。</div>
-        <div class="fld"><label for="mn">食品名</label><input id="mn" data-first class="inp" data-mf="n" placeholder="例: サラダチキン(バジル)"></div>
-        <div class="grid2" style="margin-top:9px">
-          <div class="fld"><label for="mk">カロリー (kcal)</label><input id="mk" class="inp mono n" type="number" step="1" data-mf="kcal"></div>
-          <div class="fld"><label for="mp">タンパク質 (g)</label><input id="mp" class="inp mono n" type="number" step="0.1" data-mf="p"></div>
-          <div class="fld"><label for="mff">脂質 (g)</label><input id="mff" class="inp mono n" type="number" step="0.1" data-mf="f"></div>
-          <div class="fld"><label for="mc">炭水化物 (g)</label><input id="mc" class="inp mono n" type="number" step="0.1" data-mf="cb"></div>
-          <div class="fld"><label for="ms">食塩相当量 (g)</label><input id="ms" class="inp mono n" type="number" step="0.1" data-mf="s"></div>
-        </div>
-        <div class="fld" style="margin-top:9px"><label>単位(任意)</label>
-          <div class="grid2">
-            <input class="inp" data-mf="un" placeholder="ラベル 例: 1個">
-            <input class="inp mono n" type="number" step="1" data-mf="ug" placeholder="グラム 例: 110">
-          </div></div>`;
+    title: ex ? "マイ食品を編集" : "マイ食品を登録",
+    idx, mode: u0 ? "serv" : "100",
+    v: ex
+      ? { n: ex.n, kcal: ex.kcal, p: ex.p, f: ex.f, cb: ex.cb, s: ex.s || 0,
+          un: u0 ? u0[0] : "", ug: u0 ? u0[1] : "" }
+      : { n: "", kcal: "", p: "", f: "", cb: "", s: "", un: "", ug: "" },
+    /* 画面の入力値を 100g あたりに直して this.v へ取り込む */
+    pull() {
+      const host = document.getElementById("sheetHost");
+      if (!host) return;
+      const g = k => { const e = host.querySelector(`[data-mf="${k}"]`); return e ? e.value : ""; };
+      this.v.n = g("n").trim();
+      this.v.un = g("un").trim();
+      this.v.ug = g("ug");
+      const gg = num(this.v.ug) || 100;
+      const r = this.mode === "serv" ? 100 / gg : 1;
+      for (const k of ["kcal", "p", "f", "cb", "s"]) this.v[k] = num(g(k)) * r;
     },
-    foot() { return `<button class="btn gh" data-act="closeSheet">やめる</button><button class="btn pri" data-act="saveMyFood">登録する</button>`; }
+    /* 表示用。serv のときは 1食ぶんに戻す */
+    shown() {
+      const gg = num(this.v.ug) || 100;
+      const r = this.mode === "serv" ? gg / 100 : 1;
+      const o = {};
+      for (const k of ["kcal", "p", "f", "cb", "s"]) o[k] = this.v[k] === "" ? "" : r1(this.v[k] * r);
+      return o;
+    },
+    prev() {
+      const gg = num(this.v.ug) || 100, sv = this.mode === "serv";
+      const per = k => this.v[k] === "" ? 0 : num(this.v[k]);
+      if (per("kcal") <= 0 && per("p") <= 0 && per("f") <= 0 && per("cb") <= 0)
+        return "値を入れてください。";
+      const head = sv
+        ? `1食 ${r0(gg)}g = <b>${fmt(per("kcal") * gg / 100)} kcal</b> · P${r1(per("p") * gg / 100)} F${r1(per("f") * gg / 100)} C${r1(per("cb") * gg / 100)}<br>`
+        : "";
+      return `${head}100gあたり <b>${fmt(per("kcal"))} kcal</b> · P${r1(per("p"))} F${r1(per("f"))} C${r1(per("cb"))}${this.v.un && num(this.v.ug) > 0 ? ` · 単位「${esc(this.v.un)}」= ${r0(this.v.ug)}g` : ""} として登録します。`;
+    },
+    body() {
+      const sv = this.mode === "serv", d = this.shown();
+      const num1 = (id, lab, k) => `<div class="fld"><label for="${id}">${lab}</label>
+        <input id="${id}" class="inp mono n" type="number" inputmode="decimal" step="0.1" min="0" value="${d[k]}" data-mf="${k}"></div>`;
+      return `<div class="fld"><label>入力のしかた</label>
+          <div class="pills">
+            <button class="pill" data-act="mfMode" data-v="100" aria-pressed="${!sv}">100gあたり</button>
+            <button class="pill" data-act="mfMode" data-v="serv" aria-pressed="${sv}">1食あたり</button>
+          </div>
+          <div class="sub" style="margin-top:5px">${sv
+        ? "1食分の重さと、<b>その1食ぶんの値</b>を入れてください(プロテイン28g/食 など)。100g換算はこちらで計算します。"
+        : "パッケージの成分表の<b>100gあたり</b>の値を入れてください。"}</div></div>
+
+        <div class="fld" style="margin-top:12px"><label for="mn">食品名</label>
+          <input id="mn" ${ex ? "" : "data-first "}class="inp" data-mf="n" value="${esc(this.v.n)}" placeholder="例: ソイプロテイン" autocomplete="off"></div>
+
+        ${sv ? `<div class="grid2" style="margin-top:9px">
+          <div class="fld"><label for="mug">1食の重さ (g)</label>
+            <input id="mug" ${ex ? "data-first " : ""}class="inp mono n" type="number" inputmode="decimal" step="1" min="0" value="${this.v.ug === "" ? "" : r0(this.v.ug)}" data-mf="ug" placeholder="例: 28"></div>
+          <div class="fld"><label for="mun">単位の名前</label>
+            <input id="mun" class="inp" data-mf="un" value="${esc(this.v.un)}" placeholder="1食"></div>
+        </div>` : ""}
+
+        <div class="slot-h" style="margin-top:11px">${sv ? "1食ぶんの値" : "100gあたりの値"}<span class="ln"></span></div>
+        <div class="grid2">
+          ${num1("mk", "カロリー (kcal)", "kcal")}
+          ${num1("mp", "タンパク質 (g)", "p")}
+          ${num1("mff", "脂質 (g)", "f")}
+          ${num1("mc", "炭水化物 (g)", "cb")}
+          ${num1("ms", "食塩相当量 (g)", "s")}
+        </div>
+
+        ${sv ? "" : `<div class="fld" style="margin-top:11px"><label>単位(任意) — 次から「1枚」などで呼び出せます</label>
+          <div class="grid2">
+            <input class="inp" data-mf="un" value="${esc(this.v.un)}" placeholder="ラベル 例: 1個">
+            <input class="inp mono n" type="number" step="1" min="0" value="${this.v.ug === "" ? "" : r0(this.v.ug)}" data-mf="ug" placeholder="グラム 例: 110">
+          </div></div>`}
+
+        <div class="note" style="margin-top:12px" data-mfprev>${this.prev()}</div>`;
+    },
+    foot() {
+      return `<button class="btn gh" data-act="closeSheet">やめる</button>
+        ${this.idx != null ? `<button class="btn dg" data-act="delMyFood2">削除</button>` : ""}
+        <button class="btn pri" data-act="saveMyFood">${this.idx != null ? "保存する" : "登録する"}</button>`;
+    }
   });
 }
 
@@ -4632,6 +4987,7 @@ function mergeIn(inc) {
   if (Array.isArray(inc.my)) for (const f of inc.my) if (!S.my.some(x => x.n === f.n)) S.my.push(f);
   if (Array.isArray(inc.sets)) for (const s of inc.sets) if (!S.sets.some(x => x.n === s.n)) S.sets.push(s);
   normalizeGoal();
+  migrateRuns();
   DATA_STAMP++;
   save();
   return n;
@@ -4906,30 +5262,43 @@ document.addEventListener("click", ev => {
     }
     case "delAct": edit(CUR, d => d.acts.splice(i, 1)); render(); return;
 
-    case "addInc": sheetInc(); return;
-    case "saveInc": {
-      const host = document.getElementById("sheetHost");
-      const gv = num(host.querySelector('[data-inc="g"]').value);
-      const spKmh = num(host.querySelector('[data-inc="sp"]').value);
-      const mn = num(host.querySelector('[data-inc="min"]').value);
-      if (spKmh <= 0 || mn <= 0) { toast("速度と時間を入れてください"); return; }
-      /* 保存は m/s。過去の記録と同じ形式にそろえる */
-      edit(CUR, d => d.inc.push({ g: gv, sp: kmh2ms(spKmh), min: mn }));
-      closeSheet(); render(); toast("傾斜ウォークを追加"); return;
+    case "addRun": sheetRun(); return;
+    case "editRun": sheetRun(i); return;
+    case "rnMode": SH.pull(); SH.mode = a.dataset.v; drawSheet(); return;
+    case "saveRun": {
+      SH.pull();
+      const v = SH.v;
+      if (!(v.km > 0) || !(v.sec > 0)) { toast("距離と時間を入れてください"); return; }
+      const rec = { km: v.km, sec: v.sec, g: v.g || 0 };
+      edit(CUR, d => { if (SH.idx == null) d.run.push(rec); else d.run[SH.idx] = rec; });
+      closeSheet(); render(); toast(`${r1(v.km)}km ${hms(v.sec)} を記録`); return;
     }
-    case "delInc": edit(CUR, d => d.inc.splice(i, 1)); render(); return;
+    case "delRun": edit(CUR, d => d.run.splice(i, 1)); render(); return;
+    case "delRun2": { const x = SH.idx; edit(CUR, d => d.run.splice(x, 1)); closeSheet(); render(); return; }
+    case "addInc": sheetRun(); return;
 
     case "newMyFood": sheetMyFood(); return;
     case "saveMyFood": {
-      const host = document.getElementById("sheetHost");
-      const gv = k => host.querySelector(`[data-mf="${k}"]`).value;
-      const n = gv("n").trim();
-      if (!n) { toast("食品名を入れてください"); return; }
-      if (allFoods().some(f => f.n === n)) { toast("同じ名前があります"); return; }
-      const un = gv("un").trim(), ug = num(gv("ug"));
-      S.my.unshift({ n, c: "マイ食品", kcal: num(gv("kcal")), p: num(gv("p")), f: num(gv("f")), cb: num(gv("cb")), s: num(gv("s")), u: un && ug > 0 ? [[un, ug]] : [] });
-      save(); closeSheet(); render(); toast(`${n} を登録`); return;
+      SH.pull();
+      const v = SH.v, idx = SH.idx, ex = idx != null ? S.my[idx] : null;
+      if (!v.n) { toast("食品名を入れてください"); return; }
+      if (SH.mode === "serv" && !(num(v.ug) > 0)) { toast("1食の重さを入れてください"); return; }
+      if (v.kcal <= 0 && v.p <= 0 && v.f <= 0 && v.cb <= 0) { toast("値を入れてください"); return; }
+      /* 名前の重複は自分自身を除いて見る */
+      if (allFoods().some((f, i) => f.n === v.n && !(ex && f === ex))) { toast("同じ名前があります"); return; }
+      const un = v.un || (SH.mode === "serv" ? "1食" : ""), ug = num(v.ug);
+      const rec = { n: v.n, c: ex ? ex.c : "マイ食品",
+        kcal: num(v.kcal), p: num(v.p), f: num(v.f), cb: num(v.cb), s: num(v.s),
+        u: un && ug > 0 ? [[un, ug]] : [] };
+      if (ex) S.my[idx] = rec; else S.my.unshift(rec);
+      save(); closeSheet(); render(); toast(`${v.n} を${ex ? "保存" : "登録"}`); return;
     }
+    case "editMyFood": sheetMyFood(i); return;
+    case "delMyFood2": {
+      const idx = SH.idx, n = S.my[idx].n;
+      S.my.splice(idx, 1); save(); closeSheet(); render(); toast(`${n} を削除`); return;
+    }
+    case "mfMode": SH.pull(); SH.mode = a.dataset.v; drawSheet(); return;
     case "delMyFood": S.my.splice(i, 1); save(); render(); return;
 
     case "mySets": sheetMySets(); return;
@@ -5032,6 +5401,18 @@ document.addEventListener("input", ev => {
   const el = ev.target;
   if (!SH) return;
   if (el.dataset.q1) { quickPreview(); return; }
+  if (el.dataset.rn && SH.prev) {
+    SH.pull();
+    const p = document.querySelector("[data-rnprev]");
+    if (p) p.innerHTML = SH.prev();
+    return;
+  }
+  if (el.dataset.mf && SH.prev) {
+    SH.pull();
+    const p = document.querySelector("[data-mfprev]");
+    if (p) p.innerHTML = SH.prev();
+    return;
+  }
   /* data-fg は値なしの属性なので、in で判定する(空文字は falsy) */
   if ("fg" in el.dataset && SH.sel) {
     const gg = el.hasAttribute("data-serv") ? num(el.value) * 100 : num(el.value), f = SH.sel, r = gg / 100;
@@ -5043,12 +5424,6 @@ document.addEventListener("input", ev => {
     const m = num(el.value), w = weightAt(CUR), a = SH.sel;
     const p = document.querySelector("[data-aprev]");
     if (p) p.innerHTML = `推定消費 <b>${fmt(kcalMet(a.met, w, m))} kcal</b>${a.amb ? ` · 推定 ${actSteps({ amb: 1, met: a.met, min: m }).toLocaleString("ja-JP")} 歩` : ""}`;
-  }
-  if (el.dataset.inc) {
-    SH[el.dataset.inc] = num(el.value);
-    const w = weightAt(CUR), r = incCalc({ g: SH.g, sp: kmh2ms(SH.sp), min: SH.min }, w);
-    const p = document.querySelector("[data-incprev]");
-    if (p) p.innerHTML = `キロ${paceStr(SH.sp)} のペース · 距離 ${r1(r.dist)} km · ${r1(r.met)} METs · 推定 ${r.steps.toLocaleString("ja-JP")} 歩<br>推定消費 <b>${fmt(r.kcal)} kcal</b>(${r.run ? "走行式" : "歩行式"}・安静分を除いた純消費)`;
   }
 });
 
