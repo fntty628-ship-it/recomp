@@ -2111,7 +2111,7 @@ if (window.__step) window.__step("b3", "OK 食品" + FOODS.length + " 種目" + 
 
 /* ---------------------------------------------------------------- storage */
 const LSK = "kkc.recomp.v1";   /* 保存キー。ここを変えると記録が読めなくなるので固定 */
-const APP_VER = "2026-10-22b";
+const APP_VER = "2026-10-22c";
 /* __PROFILE_START__ */
 const PROFILE = {
   sex: "m", birth: "1995-01-01", height: 170,
@@ -2187,7 +2187,7 @@ function migrateRuns() {
   let n = 0;
   for (const k in S.days) {
     const d = S.days[k];
-    if (!d || !d.inc || !d.inc.length) continue;
+    if (!d || !Array.isArray(d.inc) || !d.inc.length) continue;
     d.run = (d.run || []).concat(d.inc.map(e => ({
       km: Math.round(((num(e.sp) * 60 * num(e.min)) / 1000) * 100) / 100,
       sec: Math.round(num(e.min) * 60),
@@ -2208,7 +2208,6 @@ function normalizeGoal() {
   if (!(S.goal.peakCKg > 0)) S.goal.peakCKg = 5.5;
 }
 normalizeGoal();
-migrateRuns();
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 const dowOf = k => parse(k).getDay();
 /* 週は月曜始まり */
@@ -5456,6 +5455,9 @@ document.addEventListener("keydown", ev => {
 
 /* 初期化 */
 if (window.__step) window.__step("b4", "OK");
+/* 旧データの移行はここで。core の後ろなので num などの宣言は全て済んでいる。
+   移行が失敗しても起動は止めない(記録を見られなくなる方が困る)。 */
+try { if (migrateRuns()) { DATA_STAMP++; save(); } } catch (e) { console.error("migrateRuns", e); }
 applyTheme();
 render();
 if (!S.set.setupDone) sheetSetup();
